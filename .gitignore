@@ -44,3 +44,8 @@ phpunit.xml
 *.codex
 .cursor/
 .copilot/
+.prompts/
+AGENTS.md
+CLAUDE.md
+.cursorrules
+.mdc

@@ -280,8 +280,8 @@
 }
 
 .local-quicknote-center__quote {
-    border-width: 3px !important;
-    border-color: #0f6cbf !important;
+    border-width: 3px;
+    border-color: #0f6cbf;
 }
 
 .local-quicknote-center__quote-text {

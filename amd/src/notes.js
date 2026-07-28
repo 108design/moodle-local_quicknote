@@ -650,152 +650,181 @@ define([
             }
         });
 
+        var handleToggleClick = function() {
+            setOpenState(!state.root.classList.contains('is-open'));
+        };
+
+        var handleCloseClick = function() {
+            setOpenState(false);
+        };
+
+        var handleAddClick = function() {
+            var note = createDraftNote();
+            prependNote(note);
+
+            var noteEl = getNoteElementByKey(note.clientid);
+            var textarea = noteEl ? noteEl.querySelector(SELECTORS.textarea) : null;
+            if (textarea) {
+                textarea.focus();
+            }
+        };
+
+        var handleCopyClick = function(e, copyBtn) {
+            e.preventDefault();
+            var icon = copyBtn.querySelector('i');
+            var noteEl = copyBtn.closest(SELECTORS.note);
+            var textarea = noteEl ? noteEl.querySelector(SELECTORS.textarea) : null;
+            if (!textarea) {
+                return;
+            }
+
+            var textToCopy = textarea.value;
+            if (!textToCopy) {
+                return;
+            }
+
+            navigator.clipboard.writeText(textToCopy).then(function() {
+                if (icon) {
+                    icon.classList.remove('fa-regular', 'fa-copy');
+                    icon.classList.add('fa-solid', 'fa-check');
+                }
+                copyBtn.style.color = '#28a745';
+
+                setTimeout(function() {
+                    if (icon) {
+                        icon.classList.remove('fa-solid', 'fa-check');
+                        icon.classList.add('fa-regular', 'fa-copy');
+                    }
+                    copyBtn.style.color = '#6c757d';
+                }, 2000);
+
+                return true;
+            }).catch(function() {
+                // Ignore.
+            });
+        };
+
+        var handleDeleteClick = function(deleteBtn) {
+            var noteEl = deleteBtn.closest(SELECTORS.note);
+            var note = noteEl ? getNoteByKey(noteEl.getAttribute('data-note-key')) : null;
+
+            if (!note) {
+                return;
+            }
+
+            if (!note.id) {
+                if (state.timers[note.clientid]) {
+                    window.clearTimeout(state.timers[note.clientid]);
+                    delete state.timers[note.clientid];
+                }
+
+                state.notes = state.notes.filter(function(item) {
+                    return item.clientid !== note.clientid;
+                });
+
+                if (noteEl) {
+                    noteEl.remove();
+                }
+
+                if (!state.notes.length) {
+                    renderEmptyState();
+                } else {
+                    applyFilter();
+                }
+                updateSearchVisibility();
+
+                var rootAddBtn = state.root.querySelector(SELECTORS.add);
+                if (rootAddBtn) {
+                    rootAddBtn.focus();
+                }
+                return;
+            }
+
+            Str.get_strings([
+                {key: 'confirm', component: 'core'},
+                {key: 'delete', component: 'core'},
+                {key: 'cancel', component: 'core'}
+            ]).then(function(strings) {
+                Notification.confirm(
+                    strings[0],
+                    state.strings.deleteconfirm,
+                    strings[1],
+                    strings[2],
+                    function() {
+                        deleteNote(note, noteEl);
+                    }
+                );
+                return true;
+            }).catch(Notification.exception);
+        };
+
+        var handleQuoteClick = function(e, quoteLink) {
+            var targetUrl = quoteLink.getAttribute('href');
+            var currentUrl = window.location.href.split('#')[0];
+
+            if (targetUrl && (targetUrl.indexOf(currentUrl) === 0 || targetUrl.indexOf('#') === 0)) {
+                e.preventDefault();
+
+                var hashIndex = targetUrl.indexOf('#');
+                if (hashIndex === -1) {
+                    return;
+                }
+
+                setOpenState(false);
+
+                var noteEl = quoteLink.closest(SELECTORS.note);
+                var quoteElement = noteEl ? noteEl.querySelector(SELECTORS.quote) : null;
+                var originalText = quoteElement ? quoteElement.textContent : '';
+                if (quoteElement) {
+                    quoteElement.textContent = '';
+                }
+
+                window.setTimeout(function() {
+                    window.location.hash = targetUrl.substring(hashIndex + 1);
+
+                    window.setTimeout(function() {
+                        if (quoteElement) {
+                            quoteElement.textContent = originalText;
+                        }
+                    }, 100);
+                }, 10);
+            }
+        };
+
         state.root.addEventListener('click', function(e) {
             var toggleBtn = e.target.closest(SELECTORS.toggle);
             if (toggleBtn) {
-                setOpenState(!state.root.classList.contains('is-open'));
+                handleToggleClick();
                 return;
             }
 
             var closeBtn = e.target.closest(SELECTORS.close);
             if (closeBtn) {
-                setOpenState(false);
+                handleCloseClick();
                 return;
             }
 
             var addBtn = e.target.closest(SELECTORS.add);
             if (addBtn) {
-                var note = createDraftNote();
-                prependNote(note);
-
-                var noteEl = getNoteElementByKey(note.clientid);
-                var textarea = noteEl ? noteEl.querySelector(SELECTORS.textarea) : null;
-                if (textarea) {
-                    textarea.focus();
-                }
+                handleAddClick();
                 return;
             }
 
             var copyBtn = e.target.closest('[data-action="copy-note"]');
             if (copyBtn) {
-                e.preventDefault();
-                var icon = copyBtn.querySelector('i');
-                var noteEl = copyBtn.closest(SELECTORS.note);
-                var textarea = noteEl ? noteEl.querySelector(SELECTORS.textarea) : null;
-                if (!textarea) {
-                    return;
-                }
-
-                var textToCopy = textarea.value;
-                if (!textToCopy) {
-                    return;
-                }
-
-                navigator.clipboard.writeText(textToCopy).then(function() {
-                    if (icon) {
-                        icon.classList.remove('fa-regular', 'fa-copy');
-                        icon.classList.add('fa-solid', 'fa-check');
-                    }
-                    copyBtn.style.color = '#28a745';
-
-                    setTimeout(function() {
-                        if (icon) {
-                            icon.classList.remove('fa-solid', 'fa-check');
-                            icon.classList.add('fa-regular', 'fa-copy');
-                        }
-                        copyBtn.style.color = '#6c757d';
-                    }, 2000);
-                }).catch(function() {});
+                handleCopyClick(e, copyBtn);
                 return;
             }
 
             var deleteBtn = e.target.closest(SELECTORS.deletebutton);
             if (deleteBtn) {
-                var noteEl = deleteBtn.closest(SELECTORS.note);
-                var note = noteEl ? getNoteByKey(noteEl.getAttribute('data-note-key')) : null;
-
-                if (!note) {
-                    return;
-                }
-
-                if (!note.id) {
-                    if (state.timers[note.clientid]) {
-                        window.clearTimeout(state.timers[note.clientid]);
-                        delete state.timers[note.clientid];
-                    }
-
-                    state.notes = state.notes.filter(function(item) {
-                        return item.clientid !== note.clientid;
-                    });
-
-                    if (noteEl) {
-                        noteEl.remove();
-                    }
-
-                    if (!state.notes.length) {
-                        renderEmptyState();
-                    } else {
-                        applyFilter();
-                    }
-                    updateSearchVisibility();
-
-                    var rootAddBtn = state.root.querySelector(SELECTORS.add);
-                    if (rootAddBtn) {
-                        rootAddBtn.focus();
-                    }
-                    return;
-                }
-
-                Str.get_strings([
-                    {key: 'confirm', component: 'core'},
-                    {key: 'delete', component: 'core'},
-                    {key: 'cancel', component: 'core'}
-                ]).then(function(strings) {
-                    Notification.confirm(
-                        strings[0],
-                        state.strings.deleteconfirm,
-                        strings[1],
-                        strings[2],
-                        function() {
-                            deleteNote(note, noteEl);
-                        }
-                    );
-                }).catch(Notification.exception);
+                handleDeleteClick(deleteBtn);
                 return;
             }
 
             var quoteLink = e.target.closest(SELECTORS.quotelink);
             if (quoteLink) {
-                var targetUrl = quoteLink.getAttribute('href');
-                var currentUrl = window.location.href.split('#')[0];
-
-                if (targetUrl && (targetUrl.indexOf(currentUrl) === 0 || targetUrl.indexOf('#') === 0)) {
-                    e.preventDefault();
-
-                    var hashIndex = targetUrl.indexOf('#');
-                    if (hashIndex === -1) {
-                        return;
-                    }
-
-                    setOpenState(false);
-
-                    var noteEl = quoteLink.closest(SELECTORS.note);
-                    var quoteElement = noteEl ? noteEl.querySelector(SELECTORS.quote) : null;
-                    var originalText = quoteElement ? quoteElement.textContent : '';
-                    if (quoteElement) {
-                        quoteElement.textContent = '';
-                    }
-
-                    window.setTimeout(function() {
-                        window.location.hash = targetUrl.substring(hashIndex + 1);
-
-                        window.setTimeout(function() {
-                            if (quoteElement) {
-                                quoteElement.textContent = originalText;
-                            }
-                        }, 100);
-                    }, 10);
-                }
+                handleQuoteClick(e, quoteLink);
                 return;
             }
         });

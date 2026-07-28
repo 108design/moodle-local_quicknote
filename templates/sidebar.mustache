@@ -89,12 +89,12 @@
             </button>
         </div>
 
-        <div class="local-quicknote__search" style="display: none;">
+        <div class="local-quicknote__search">
             <label class="sr-only" for="local-quicknote-search">{{placeholder}}</label>
             <input
                 id="local-quicknote-search"
                 type="text"
-                class="form-control quicknote-search-input"
+                class="form-control local-quicknote__search-input"
                 data-action="search"
                 placeholder="{{#str}} search:placeholder, local_quicknote {{/str}}"
             >
@@ -133,14 +133,14 @@
 
                 <div class="local-quicknote__meta" data-region="note-location"></div>
 
-                <div style="position: relative;">
+                <div class="position-relative local-quicknote__textarea-wrapper">
                     <textarea
                         class="local-quicknote__textarea"
                         data-note-key=""
                         placeholder="{{placeholder}}"
                         aria-label="{{placeholder}}"
                     ></textarea>
-                    <button type="button" class="btn btn-sm btn-link local-quicknote__copy-btn" data-action="copy-note" style="position: absolute; right: 5px; bottom: 5px; color: #6c757d; z-index: 10; display: none;" title="{{#str}} copy, core {{/str}}">
+                    <button type="button" class="btn btn-sm btn-link local-quicknote__copy-btn" data-action="copy-note" title="{{#str}} copy, core {{/str}}">
                         <i class="fa-regular fa-copy" aria-hidden="true"></i>
                     </button>
                 </div>

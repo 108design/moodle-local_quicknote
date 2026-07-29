@@ -1,5 +1,16 @@
 # Moodle plugin: local_quicknote
 
+## 0.8.4 (2026-07-29)
+- **Refactoring & Performance**:
+  - Removed jQuery dependency from `view.js` and `notes.js` modules, replacing it with native standard JavaScript methods.
+  - Extracted click handlers for note actions (toggle, close, add, copy, delete, quote) into separate functions for improved maintainability.
+- **UI/UX & Styling Sidebar**:
+  - Integrated the `core/user_date` module for proper localized date formatting of note timestamps.
+  - Added new CSS styles for note actions to enhance layout and spacing.
+  - Improved note status updates to effectively reflect the latest modifications.
+- **Accessibility Improvements (A11y)**:
+  - Fix the search input label to use the correct one.
+
 ## 0.8.3 (2026-07-13)
 - **Backward Compatibility (Moodle < 4.4)**:
   - Re-introduced the legacy callback `before_standard_top_of_body_html` in `lib.php` to render the QuickNote toggle/sidebar on older Moodle versions that do not support the Hooks API.

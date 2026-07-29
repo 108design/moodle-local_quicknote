@@ -19,34 +19,38 @@
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-define(['jquery'], function($) {
+define([], function() {
     return {
         init: function() {
-            var $select = $('#coursefilter');
+            var select = document.getElementById('coursefilter');
             var isKeyboardNav = false;
 
-            if (!$select.length) {
+            if (!select) {
                 return;
             }
 
-            $select.on('keydown', function(e) {
+            select.addEventListener('keydown', function(e) {
                 // Up, Down, Left, Right arrows
-                if (e.which >= 37 && e.which <= 40) {
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) !== -1) {
                     isKeyboardNav = true;
                 }
                 // Enter key
-                if (e.which === 13) {
-                    this.form.submit();
+                if (e.key === 'Enter') {
+                    if (this.form) {
+                        this.form.submit();
+                    }
                 }
             });
 
-            $select.on('mousedown', function() {
+            select.addEventListener('mousedown', function() {
                 isKeyboardNav = false;
             });
 
-            $select.on('change', function() {
+            select.addEventListener('change', function() {
                 if (!isKeyboardNav) {
-                    this.form.submit();
+                    if (this.form) {
+                        this.form.submit();
+                    }
                 }
                 isKeyboardNav = false; // Reset for next interaction
             });

@@ -20,11 +20,11 @@
  */
 
 define([
-    'jquery',
     'core/ajax',
     'core/notification',
-    'core/str'
-], function($, Ajax, Notification, Str) {
+    'core/str',
+    'core/user_date'
+], function(Ajax, Notification, Str, UserDate) {
     var SELECTORS = {
         root: '#local-quicknote-root',
         panel: '[data-region="panel"]',
@@ -54,24 +54,25 @@ define([
     var state = null;
 
     var escapeHtml = function(value) {
-        return $('<div>').text(String(value || '')).html();
-    };
-
-    var formatTimestamp = function(timestamp) {
-        if (!timestamp) {
-            return '';
-        }
-
-        return new Date(timestamp * 1000).toLocaleString();
+        var div = document.createElement('div');
+        div.textContent = String(value || '');
+        return div.innerHTML;
     };
 
     var updateSearchVisibility = function() {
-        var $searchwrapper = state.root.find(SELECTORS.searchwrapper);
+        var searchwrapper = state.root.querySelector(SELECTORS.searchwrapper);
+        var searchInput = state.root.querySelector(SELECTORS.search);
         if (state.notes.length > 0) {
-            $searchwrapper.show();
+            if (searchwrapper) {
+                searchwrapper.style.display = 'block';
+            }
         } else {
-            $searchwrapper.hide();
-            state.root.find(SELECTORS.search).val('');
+            if (searchwrapper) {
+                searchwrapper.style.display = 'none';
+            }
+            if (searchInput) {
+                searchInput.value = '';
+            }
         }
     };
 
@@ -98,7 +99,7 @@ define([
     };
 
     var normaliseNote = function(note) {
-        var normalisednote = $.extend({}, note, {
+        var normalisednote = Object.assign({}, note, {
             clientid: note.clientid || ('note-' + note.id),
             content: note.content || '',
             quote: note.quote || '',
@@ -114,16 +115,17 @@ define([
     };
 
     var getRoot = function() {
-        return $(SELECTORS.root);
+        return document.querySelector(SELECTORS.root);
     };
 
     var getList = function() {
-        return state.root.find(SELECTORS.list);
+        return state.root.querySelector(SELECTORS.list);
     };
 
     var getSearchTerm = function() {
-        var value = state.root.find(SELECTORS.search).val() || '';
-        return String(value).toLowerCase();
+        var searchInput = state.root.querySelector(SELECTORS.search);
+        var value = searchInput ? searchInput.value : '';
+        return String(value || '').toLowerCase();
     };
 
     var getNoteByKey = function(key) {
@@ -133,100 +135,143 @@ define([
     };
 
     var getNoteElementByKey = function(key) {
-        return state.root.find(SELECTORS.note + '[data-note-key="' + key + '"]').first();
+        return state.root.querySelector(SELECTORS.note + '[data-note-key="' + key + '"]');
     };
 
-    var setNoteStatus = function($note, text) {
-        $note.find(SELECTORS.status).text(text || '');
+    var setNoteStatus = function(noteEl, text, timestamp) {
+        var statusEl = noteEl.querySelector(SELECTORS.status);
+        if (statusEl) {
+            if (text) {
+                statusEl.textContent = text;
+            } else if (timestamp) {
+                Str.get_string('strftimedatetimeshort', 'langconfig').then(function(format) {
+                    return UserDate.get([{
+                        timestamp: timestamp,
+                        format: format
+                    }]);
+                }).then(function(dates) {
+                    var noteKey = noteEl.getAttribute('data-note-key');
+                    var note = getNoteByKey(noteKey);
+                    // Only update if the note hasn't changed its status while we were fetching the date
+                    if (note && !note.status && note.timemodified === timestamp) {
+                        statusEl.textContent = state.strings.updatedlabel + ': ' + dates[0];
+                    }
+                    return true;
+                }).catch(function() {
+                    statusEl.textContent = state.strings.updatedlabel + ': ' + new Date(timestamp * 1000).toLocaleString();
+                });
+            } else {
+                statusEl.textContent = '';
+            }
+        }
     };
 
-    var setNoteUpdated = function($note, timestamp) {
-        $note.find(SELECTORS.updated).text(
-            state.strings.updatedlabel + ': ' + formatTimestamp(timestamp)
-        );
-    };
-
-    var setNoteLocation = function($note, url, hasquote) {
-        var $location = $note.find(SELECTORS.location);
+    var setNoteLocation = function(noteEl, url, hasquote) {
+        var locationEl = noteEl.querySelector(SELECTORS.location);
+        if (!locationEl) {
+            return;
+        }
 
         if (hasquote || !url) {
-            $location.empty();
+            locationEl.innerHTML = '';
             return;
         }
 
-        $location.html(
-            escapeHtml(state.strings.locationlabel) + ': ' +
-            '<a href="' + escapeHtml(url) + '">' + escapeHtml(url) + '</a>'
-        );
+        locationEl.innerHTML = escapeHtml(state.strings.locationlabel) + ': ' +
+            '<a href="' + escapeHtml(url) + '">' + escapeHtml(url) + '</a>';
     };
 
-    var setNoteQuote = function($note, note) {
-        var $wrapper = $note.find(SELECTORS.quotewrapper);
-        var $quote = $note.find(SELECTORS.quote);
-        var $link = $note.find(SELECTORS.quotelink);
+    var setNoteQuote = function(noteEl, note) {
+        var wrapper = noteEl.querySelector(SELECTORS.quotewrapper);
+        var quote = noteEl.querySelector(SELECTORS.quote);
+        var link = noteEl.querySelector(SELECTORS.quotelink);
 
         if (!note.hasquote) {
-            $wrapper.attr('hidden', 'hidden');
-            $quote.text('');
-            $link.attr('href', '#');
-            $link.attr('hidden', 'hidden');
+            if (wrapper) {
+                wrapper.setAttribute('hidden', 'hidden');
+            }
+            if (quote) {
+                quote.textContent = '';
+            }
+            if (link) {
+                link.setAttribute('href', '#');
+                link.setAttribute('hidden', 'hidden');
+            }
             return;
         }
 
-        $quote.text(note.quotetext);
-        $link.attr('href', note.quoteurl || '#');
-        $link.attr('hidden', note.quoteurl ? null : 'hidden');
-        $wrapper.removeAttr('hidden');
+        if (quote) {
+            quote.textContent = note.quotetext;
+        }
+        if (link) {
+            link.setAttribute('href', note.quoteurl || '#');
+            if (note.quoteurl) {
+                link.removeAttribute('hidden');
+            } else {
+                link.setAttribute('hidden', 'hidden');
+            }
+        }
+        if (wrapper) {
+            wrapper.removeAttribute('hidden');
+        }
     };
 
-    var updateNoteElement = function(note, $note, preservecontent) {
-        var $textarea = $note.find(SELECTORS.textarea);
-        var currentcontent = preservecontent ? $textarea.val() : note.content;
+    var updateNoteElement = function(note, noteEl, preservecontent) {
+        var textarea = noteEl.querySelector(SELECTORS.textarea);
+        var currentcontent = preservecontent && textarea ? textarea.value : note.content;
         var textareaid = 'local-quicknote-textarea-' + note.clientid;
 
-        $note.attr('data-note-key', note.clientid);
-        $textarea.attr('id', textareaid);
-        $textarea.attr('data-note-key', note.clientid);
-        $textarea.attr('placeholder', state.strings.placeholder);
-        $note.find('label').attr('for', textareaid);
-        $note.find(SELECTORS.deletebutton).attr('data-noteid', note.id || 0);
+        noteEl.setAttribute('data-note-key', note.clientid);
 
-        setNoteStatus($note, note.status);
-        setNoteQuote($note, note);
-        setNoteUpdated($note, note.timemodified);
-        setNoteLocation($note, note.url, note.hasquote);
+        if (textarea) {
+            textarea.setAttribute('id', textareaid);
+            textarea.setAttribute('data-note-key', note.clientid);
+            textarea.setAttribute('placeholder', state.strings.placeholder);
 
-        if ($textarea.val() !== currentcontent) {
-            $textarea.val(currentcontent);
+            if (textarea.value !== currentcontent) {
+                textarea.value = currentcontent;
+            }
         }
 
-        if (currentcontent.trim().length > 0) {
-            $note.find('[data-action="copy-note"]').show();
-        } else {
-            $note.find('[data-action="copy-note"]').hide();
+        var label = noteEl.querySelector('label');
+        if (label) {
+            label.setAttribute('for', textareaid);
+        }
+
+        var deletebutton = noteEl.querySelector(SELECTORS.deletebutton);
+        if (deletebutton) {
+            deletebutton.setAttribute('data-noteid', note.id || 0);
+        }
+
+        setNoteStatus(noteEl, note.status, note.timemodified);
+        setNoteQuote(noteEl, note);
+        setNoteLocation(noteEl, note.url, note.hasquote);
+
+        var copyBtn = noteEl.querySelector('[data-action="copy-note"]');
+        if (copyBtn) {
+            if (currentcontent.trim().length > 0) {
+                copyBtn.style.display = '';
+            } else {
+                copyBtn.style.display = 'none';
+            }
         }
     };
 
     var createNoteElement = function(note) {
-        var template = state.root.find(SELECTORS.noteTemplate).get(0);
+        var template = state.root.querySelector(SELECTORS.noteTemplate);
         var element = document.importNode(template.content.firstElementChild, true);
-        var $note = $(element);
 
-        updateNoteElement(note, $note, false);
+        updateNoteElement(note, element, false);
 
-        return $note;
+        return element;
     };
 
     var renderEmptyState = function() {
-        getList().html(
-            '<p class="local-quicknote__empty">' + escapeHtml(state.strings.emptytext) + '</p>'
-        );
+        getList().innerHTML = '<p class="local-quicknote__empty">' + escapeHtml(state.strings.emptytext) + '</p>';
     };
 
     var renderNoResultsState = function() {
-        getList().html(
-            '<p class="local-quicknote__empty">' + escapeHtml(state.strings.noresultstext) + '</p>'
-        );
+        getList().innerHTML = '<p class="local-quicknote__empty">' + escapeHtml(state.strings.noresultstext) + '</p>';
     };
 
     var noteMatchesSearch = function(note, term) {
@@ -241,34 +286,41 @@ define([
     var applyFilter = function() {
         var term = getSearchTerm();
         var visiblecount = 0;
+        var list = getList();
 
         if (!state.notes.length) {
             renderEmptyState();
             return;
         }
 
-        getList().find(SELECTORS.note).each(function() {
-            var $note = $(this);
-            var note = getNoteByKey($note.attr('data-note-key'));
+        var noteElements = list.querySelectorAll(SELECTORS.note);
+        noteElements.forEach(function(noteEl) {
+            var note = getNoteByKey(noteEl.getAttribute('data-note-key'));
             var matches = note && noteMatchesSearch(note, term);
 
-            $note.toggle(!!matches);
-
             if (matches) {
+                noteEl.style.display = '';
                 visiblecount += 1;
+            } else {
+                noteEl.style.display = 'none';
             }
         });
 
-        getList().find(SELECTORS.emptystate).remove();
+        var emptyState = list.querySelector(SELECTORS.emptystate);
+        if (emptyState) {
+            emptyState.remove();
+        }
 
         if (!visiblecount) {
-            getList().find(SELECTORS.note).hide();
+            noteElements.forEach(function(n) {
+                n.style.display = 'none';
+            });
             renderNoResultsState();
         }
     };
 
     var renderNotes = function() {
-        var $list = getList();
+        var list = getList();
 
         updateSearchVisibility();
 
@@ -277,9 +329,9 @@ define([
             return;
         }
 
-        $list.empty();
+        list.innerHTML = '';
         state.notes.forEach(function(note) {
-            $list.append(createNoteElement(note));
+            list.appendChild(createNoteElement(note));
         });
 
         applyFilter();
@@ -290,17 +342,14 @@ define([
     };
 
     var createHighlightButton = function() {
-        var $button = $('<button>', {
-            type: 'button',
-            'class': HIGHLIGHT_BUTTON_CLASS,
-            'aria-label': state.strings.highlightlabel,
-            text: '+'
-        });
-
-        $button.attr('hidden', 'hidden');
-        $('body').append($button);
-
-        return $button;
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = HIGHLIGHT_BUTTON_CLASS;
+        button.setAttribute('aria-label', state.strings.highlightlabel);
+        button.textContent = '+';
+        button.setAttribute('hidden', 'hidden');
+        document.body.appendChild(button);
+        return button;
     };
 
     var hideHighlightButton = function(clearselection) {
@@ -308,7 +357,7 @@ define([
             return;
         }
 
-        state.highlightbutton.attr('hidden', 'hidden');
+        state.highlightbutton.setAttribute('hidden', 'hidden');
         state.highlightselectiontext = '';
 
         if (clearselection) {
@@ -335,11 +384,9 @@ define([
         left = Math.max(spacing, Math.min(left, maxleft));
 
         state.highlightselectiontext = text;
-        state.highlightbutton.css({
-            top: top + 'px',
-            left: left + 'px'
-        });
-        state.highlightbutton.removeAttr('hidden');
+        state.highlightbutton.style.top = top + 'px';
+        state.highlightbutton.style.left = left + 'px';
+        state.highlightbutton.removeAttribute('hidden');
     };
 
     var getValidSelection = function(targetWindow) {
@@ -369,11 +416,11 @@ define([
                 container = container.parentNode;
             }
 
-            if (!container || $(container).closest(SELECTORS.root).length) {
+            if (!container || container.closest(SELECTORS.root)) {
                 return null;
             }
 
-            if ($(container).closest('input, textarea, button').length) {
+            if (container.closest('input, textarea, button')) {
                 return null;
             }
 
@@ -392,26 +439,40 @@ define([
     };
 
     var setOpenState = function(isopen) {
-        var $panel = state.root.find(SELECTORS.panel);
-        var $toggle = state.root.find(SELECTORS.toggle);
-
-        state.root.toggleClass('is-open', isopen);
-        $panel.attr('aria-hidden', isopen ? 'false' : 'true');
-        $toggle.attr('aria-expanded', isopen ? 'true' : 'false');
+        var panel = state.root.querySelector(SELECTORS.panel);
+        var toggle = state.root.querySelector(SELECTORS.toggle);
 
         if (isopen) {
-            $panel.find(SELECTORS.close).trigger('focus');
+            state.root.classList.add('is-open');
         } else {
-            $toggle.trigger('focus');
+            state.root.classList.remove('is-open');
+        }
+
+        if (panel) {
+            panel.setAttribute('aria-hidden', isopen ? 'false' : 'true');
+        }
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', isopen ? 'true' : 'false');
+        }
+
+        if (isopen) {
+            var closeBtn = panel ? panel.querySelector(SELECTORS.close) : null;
+            if (closeBtn) {
+                closeBtn.focus();
+            }
+        } else {
+            if (toggle) {
+                toggle.focus();
+            }
         }
     };
 
     var saveNote = function(note) {
         var request;
-        var $note = getNoteElementByKey(note.clientid);
+        var noteEl = getNoteElementByKey(note.clientid);
 
-        if ($note.length) {
-            setNoteStatus($note, state.strings.savingtext);
+        if (noteEl) {
+            setNoteStatus(noteEl, state.strings.savingtext, note.timemodified);
         }
 
         request = Ajax.call([{
@@ -426,9 +487,9 @@ define([
             }
         }])[0];
 
-        request.done(function(response) {
+        request.then(function(response) {
             var savednote = normaliseNote(response);
-            var $currentnote = getNoteElementByKey(note.clientid);
+            var currentnoteEl = getNoteElementByKey(note.clientid);
 
             savednote.hasquote = !!(savednote.quote && savednote.quote.trim() !== '');
             savednote.quotetext = savednote.quote;
@@ -445,16 +506,22 @@ define([
             note.timemodified = savednote.timemodified;
             note.status = state.strings.savedtext;
 
-            if ($currentnote.length) {
-                setNoteStatus($currentnote, note.status);
-                setNoteQuote($currentnote, note);
-                setNoteLocation($currentnote, note.url, note.hasquote);
+            if (currentnoteEl) {
+                setNoteStatus(currentnoteEl, note.status, note.timemodified);
+                setNoteQuote(currentnoteEl, note);
+                setNoteLocation(currentnoteEl, note.url, note.hasquote);
+
+                setTimeout(function() {
+                    note.status = '';
+                    setNoteStatus(currentnoteEl, note.status, note.timemodified);
+                }, 3000);
             }
-        }).fail(function(error) {
+            return response;
+        }).catch(function(error) {
             note.status = state.strings.errortext;
 
-            if ($note.length) {
-                setNoteStatus($note, note.status);
+            if (noteEl) {
+                setNoteStatus(noteEl, note.status, note.timemodified);
             }
 
             Notification.exception(error);
@@ -482,18 +549,19 @@ define([
             }
         }])[0];
 
-        request.done(function(response) {
+        request.then(function(response) {
             state.notes = response.map(function(note) {
                 return normaliseNote(note);
             });
 
             renderNotes();
-        }).fail(function(error) {
+            return response;
+        }).catch(function(error) {
             Notification.exception(error);
         });
     };
 
-    var deleteNote = function(note, $note) {
+    var deleteNote = function(note, noteEl) {
         var request = Ajax.call([{
             methodname: 'local_quicknote_delete_note',
             args: {
@@ -501,9 +569,9 @@ define([
             }
         }])[0];
 
-        request.done(function(response) {
+        request.then(function(response) {
             if (!response.deleted) {
-                return;
+                return response;
             }
 
             state.notes = state.notes.filter(function(item) {
@@ -515,7 +583,9 @@ define([
                 delete state.timers[note.clientid];
             }
 
-            $note.remove();
+            if (noteEl) {
+                noteEl.remove();
+            }
 
             if (!state.notes.length) {
                 renderEmptyState();
@@ -523,8 +593,12 @@ define([
             updateSearchVisibility();
 
             // Return focus to a logical element to prevent focus loss
-            state.root.find(SELECTORS.add).trigger('focus');
-        }).fail(function(error) {
+            var addBtn = state.root.querySelector(SELECTORS.add);
+            if (addBtn) {
+                addBtn.focus();
+            }
+            return response;
+        }).catch(function(error) {
             Notification.exception(error);
         });
     };
@@ -543,23 +617,22 @@ define([
         prependNote(note);
         openSidebar();
 
-        var $note = getNoteElementByKey(note.clientid);
-        var $textarea = $note.find(SELECTORS.textarea);
-        if ($textarea.length) {
-            $textarea.trigger('focus');
+        var noteEl = getNoteElementByKey(note.clientid);
+        var textarea = noteEl ? noteEl.querySelector(SELECTORS.textarea) : null;
+        if (textarea) {
+            textarea.focus();
         }
 
         saveNote(note);
     };
 
     var bindEvents = function() {
-        state.highlightbutton.on('mousedown', function(e) {
+        state.highlightbutton.addEventListener('mousedown', function(e) {
             e.preventDefault();
         });
 
-        state.highlightbutton.on('click', function() {
+        state.highlightbutton.addEventListener('click', function() {
             var text = state.highlightselectiontext;
-
             hideHighlightButton(true);
 
             if (!text) {
@@ -570,9 +643,8 @@ define([
         });
 
         // Handle text selection highlight on mouseup.
-        // Synchronous handler — no setTimeout(0) — avoids event queue interference.
-        $(document).on('mouseup.local_quicknote', function(e) {
-            if ($(e.target).closest('.' + HIGHLIGHT_BUTTON_CLASS).length) {
+        document.addEventListener('mouseup', function(e) {
+            if (e.target.closest('.' + HIGHLIGHT_BUTTON_CLASS)) {
                 return;
             }
             var result = getValidSelection();
@@ -583,87 +655,69 @@ define([
             }
         });
 
-        $(document).on('keyup.local_quicknote_esc', function(e) {
-            if (e.key === 'Escape' && state.root.hasClass('is-open')) {
+        document.addEventListener('keyup', function(e) {
+            if (e.key === 'Escape' && state.root.classList.contains('is-open')) {
                 setOpenState(false);
             }
         });
 
-        state.root.on('click', SELECTORS.toggle, function() {
-            setOpenState(!state.root.hasClass('is-open'));
-        });
+        var handleToggleClick = function() {
+            setOpenState(!state.root.classList.contains('is-open'));
+        };
 
-        state.root.on('click', SELECTORS.close, function() {
+        var handleCloseClick = function() {
             setOpenState(false);
-        });
+        };
 
-        state.root.on('click', SELECTORS.add, function() {
+        var handleAddClick = function() {
             var note = createDraftNote();
-            var $note;
-            var $textarea;
-
             prependNote(note);
 
-            $note = getNoteElementByKey(note.clientid);
-            $textarea = $note.find(SELECTORS.textarea);
-            if ($textarea.length) {
-                $textarea.trigger('focus');
+            var noteEl = getNoteElementByKey(note.clientid);
+            var textarea = noteEl ? noteEl.querySelector(SELECTORS.textarea) : null;
+            if (textarea) {
+                textarea.focus();
             }
-        });
+        };
 
-        state.root.on('input', SELECTORS.textarea, function() {
-            var $textarea = $(this);
-            var note = getNoteByKey($textarea.attr('data-note-key'));
-
-            if (!note) {
+        var handleCopyClick = function(e, copyBtn) {
+            e.preventDefault();
+            var icon = copyBtn.querySelector('i');
+            var noteEl = copyBtn.closest(SELECTORS.note);
+            var textarea = noteEl ? noteEl.querySelector(SELECTORS.textarea) : null;
+            if (!textarea) {
                 return;
             }
 
-            note.content = $textarea.val();
-            note.url = window.location.href;
-            note.timemodified = Math.floor(Date.now() / 1000);
-
-            if (note.content.trim().length > 0) {
-                $textarea.siblings('[data-action="copy-note"]').show();
-            } else {
-                $textarea.siblings('[data-action="copy-note"]').hide();
-            }
-
-            scheduleSave(note);
-            applyFilter();
-        });
-
-        state.root.on('click', '[data-action="copy-note"]', function(e) {
-            e.preventDefault();
-            var $button = $(this);
-            var $icon = $button.find('i');
-            var $textarea = $button.siblings(SELECTORS.textarea);
-            var textToCopy = $textarea.val();
-
+            var textToCopy = textarea.value;
             if (!textToCopy) {
                 return;
             }
 
             navigator.clipboard.writeText(textToCopy).then(function() {
-                $icon.removeClass('fa-regular fa-copy').addClass('fa-solid fa-check');
-                $button.css('color', '#28a745');
+                if (icon) {
+                    icon.classList.remove('fa-regular', 'fa-copy');
+                    icon.classList.add('fa-solid', 'fa-check');
+                }
+                copyBtn.style.color = '#28a745';
 
                 setTimeout(function() {
-                    $icon.removeClass('fa-solid fa-check').addClass('fa-regular fa-copy');
-                    $button.css('color', '#6c757d');
+                    if (icon) {
+                        icon.classList.remove('fa-solid', 'fa-check');
+                        icon.classList.add('fa-regular', 'fa-copy');
+                    }
+                    copyBtn.style.color = '#6c757d';
                 }, 2000);
 
                 return true;
             }).catch(function() {
-                // Ignore gracefully
-                return false;
+                // Ignore.
             });
-        });
+        };
 
-        state.root.on('click', SELECTORS.deletebutton, function(e) {
-            var $button = $(e.currentTarget);
-            var $note = $button.closest(SELECTORS.note);
-            var note = getNoteByKey($note.attr('data-note-key'));
+        var handleDeleteClick = function(deleteBtn) {
+            var noteEl = deleteBtn.closest(SELECTORS.note);
+            var note = noteEl ? getNoteByKey(noteEl.getAttribute('data-note-key')) : null;
 
             if (!note) {
                 return;
@@ -679,7 +733,9 @@ define([
                     return item.clientid !== note.clientid;
                 });
 
-                $note.remove();
+                if (noteEl) {
+                    noteEl.remove();
+                }
 
                 if (!state.notes.length) {
                     renderEmptyState();
@@ -688,8 +744,10 @@ define([
                 }
                 updateSearchVisibility();
 
-                // Return focus to a logical element to prevent focus loss
-                state.root.find(SELECTORS.add).trigger('focus');
+                var rootAddBtn = state.root.querySelector(SELECTORS.add);
+                if (rootAddBtn) {
+                    rootAddBtn.focus();
+                }
                 return;
             }
 
@@ -697,21 +755,22 @@ define([
                 {key: 'confirm', component: 'core'},
                 {key: 'delete', component: 'core'},
                 {key: 'cancel', component: 'core'}
-            ]).done(function(strings) {
+            ]).then(function(strings) {
                 Notification.confirm(
                     strings[0],
                     state.strings.deleteconfirm,
                     strings[1],
                     strings[2],
                     function() {
-                        deleteNote(note, $note);
+                        deleteNote(note, noteEl);
                     }
                 );
-            }).fail(Notification.exception);
-        });
+                return true;
+            }).catch(Notification.exception);
+        };
 
-        state.root.on('click', SELECTORS.quotelink, function(e) {
-            var targetUrl = $(this).attr('href');
+        var handleQuoteClick = function(e, quoteLink) {
+            var targetUrl = quoteLink.getAttribute('href');
             var currentUrl = window.location.href.split('#')[0];
 
             if (targetUrl && (targetUrl.indexOf(currentUrl) === 0 || targetUrl.indexOf('#') === 0)) {
@@ -724,21 +783,105 @@ define([
 
                 setOpenState(false);
 
-                var $quoteElement = $(this).closest(SELECTORS.note).find(SELECTORS.quote);
-                var originalText = $quoteElement.text();
-                $quoteElement.text('');
+                var noteEl = quoteLink.closest(SELECTORS.note);
+                var quoteElement = noteEl ? noteEl.querySelector(SELECTORS.quote) : null;
+                var originalText = quoteElement ? quoteElement.textContent : '';
+                if (quoteElement) {
+                    quoteElement.textContent = '';
+                }
 
                 window.setTimeout(function() {
                     window.location.hash = targetUrl.substring(hashIndex + 1);
 
                     window.setTimeout(function() {
-                        $quoteElement.text(originalText);
+                        if (quoteElement) {
+                            quoteElement.textContent = originalText;
+                        }
                     }, 100);
                 }, 10);
             }
+        };
+
+        state.root.addEventListener('click', function(e) {
+            var toggleBtn = e.target.closest(SELECTORS.toggle);
+            if (toggleBtn) {
+                handleToggleClick();
+                return;
+            }
+
+            var closeBtn = e.target.closest(SELECTORS.close);
+            if (closeBtn) {
+                handleCloseClick();
+                return;
+            }
+
+            var addBtn = e.target.closest(SELECTORS.add);
+            if (addBtn) {
+                handleAddClick();
+                return;
+            }
+
+            var copyBtn = e.target.closest('[data-action="copy-note"]');
+            if (copyBtn) {
+                handleCopyClick(e, copyBtn);
+                return;
+            }
+
+            var deleteBtn = e.target.closest(SELECTORS.deletebutton);
+            if (deleteBtn) {
+                handleDeleteClick(deleteBtn);
+                return;
+            }
+
+            var quoteLink = e.target.closest(SELECTORS.quotelink);
+            if (quoteLink) {
+                handleQuoteClick(e, quoteLink);
+                return;
+            }
         });
 
-        state.root.on('input keyup', SELECTORS.search, function() {
+        state.root.addEventListener('input', function(e) {
+            var textarea = e.target.closest(SELECTORS.textarea);
+            if (textarea) {
+                var note = getNoteByKey(textarea.getAttribute('data-note-key'));
+                if (!note) {
+                    return;
+                }
+
+                note.content = textarea.value;
+                note.url = window.location.href;
+                note.timemodified = Math.floor(Date.now() / 1000);
+
+                var noteEl = textarea.closest(SELECTORS.note);
+                var cBtn = noteEl ? noteEl.querySelector('[data-action="copy-note"]') : null;
+
+                if (cBtn) {
+                    if (note.content.trim().length > 0) {
+                        cBtn.style.display = '';
+                    } else {
+                        cBtn.style.display = 'none';
+                    }
+                }
+
+                scheduleSave(note);
+                applyFilter();
+                return;
+            }
+
+            var search = e.target.closest(SELECTORS.search);
+            if (search) {
+                handleSearchInput();
+            }
+        });
+
+        state.root.addEventListener('keyup', function(e) {
+            var search = e.target.closest(SELECTORS.search);
+            if (search) {
+                handleSearchInput();
+            }
+        });
+
+        var handleSearchInput = function() {
             var term = getSearchTerm();
 
             if (!state.notes.length) {
@@ -749,10 +892,17 @@ define([
             renderNotes();
 
             if (!term) {
-                getList().find(SELECTORS.emptystate).remove();
-                getList().find(SELECTORS.note).show();
+                var emptyState = getList().querySelector(SELECTORS.emptystate);
+                if (emptyState) {
+                    emptyState.remove();
+                }
+
+                var noteEls = getList().querySelectorAll(SELECTORS.note);
+                noteEls.forEach(function(n) {
+                    n.style.display = '';
+                });
             }
-        });
+        };
 
         // Listen for highlight messages triggered inside iframes.
         window.addEventListener('message', function(event) {
@@ -767,28 +917,28 @@ define([
 
     return {
         init: function(config) {
-            var $root = getRoot();
+            var rootEl = getRoot();
 
-            if (!$root.length) {
+            if (!rootEl) {
                 return;
             }
 
             state = {
-                root: $root,
-                courseid: Number(config.courseid || $root.attr('data-courseid')),
+                root: rootEl,
+                courseid: Number(config.courseid || rootEl.getAttribute('data-courseid')),
                 notes: [],
                 timers: {},
                 strings: {
-                    placeholder: $root.attr('data-placeholder'),
-                    emptytext: $root.attr('data-emptytext'),
-                    savingtext: $root.attr('data-savingtext'),
-                    savedtext: $root.attr('data-savedtext'),
-                    errortext: $root.attr('data-errortext'),
-                    updatedlabel: $root.attr('data-updatedlabel'),
-                    locationlabel: $root.attr('data-locationlabel'),
-                    highlightlabel: $root.attr('data-highlightlabel'),
-                    deleteconfirm: $root.attr('data-deleteconfirm'),
-                    noresultstext: $root.attr('data-noresultstext')
+                    placeholder: rootEl.getAttribute('data-placeholder'),
+                    emptytext: rootEl.getAttribute('data-emptytext'),
+                    savingtext: rootEl.getAttribute('data-savingtext'),
+                    savedtext: rootEl.getAttribute('data-savedtext'),
+                    errortext: rootEl.getAttribute('data-errortext'),
+                    updatedlabel: rootEl.getAttribute('data-updatedlabel'),
+                    locationlabel: rootEl.getAttribute('data-locationlabel'),
+                    highlightlabel: rootEl.getAttribute('data-highlightlabel'),
+                    deleteconfirm: rootEl.getAttribute('data-deleteconfirm'),
+                    noresultstext: rootEl.getAttribute('data-noresultstext')
                 }
             };
 
@@ -812,7 +962,7 @@ define([
 
             // Central handler for mouseup events across contexts.
             var handleMouseUp = function(e, win) {
-                if ($(e.target).closest('.' + HIGHLIGHT_BUTTON_CLASS).length) {
+                if (e.target.closest('.' + HIGHLIGHT_BUTTON_CLASS)) {
                     return;
                 }
 
@@ -845,9 +995,11 @@ define([
                             var innerWin = h5pIframe.contentWindow;
                             var innerDoc = h5pIframe.contentDocument;
 
-                            innerDoc.addEventListener('mouseup', function(e) {
-                                handleMouseUp(e, innerWin);
-                            }, true);
+                            if (innerDoc) {
+                                innerDoc.addEventListener('mouseup', function(e) {
+                                    handleMouseUp(e, innerWin);
+                                }, true);
+                            }
                         } catch (err) {
                             // Cross-origin boundaries may prevent attachment.
                         }
@@ -868,10 +1020,10 @@ define([
             // Retry for up to 5 seconds (10 attempts * 500ms).
             attachToInnerIframe(10);
 
-            state.highlightbutton.on('mousedown', function(e) {
+            state.highlightbutton.addEventListener('mousedown', function(e) {
                 e.preventDefault();
             });
-            state.highlightbutton.on('click', function() {
+            state.highlightbutton.addEventListener('click', function() {
                 var text = state.highlightselectiontext;
                 hideHighlightButton(true);
 

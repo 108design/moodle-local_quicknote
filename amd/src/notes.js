@@ -22,8 +22,9 @@
 define([
     'core/ajax',
     'core/notification',
-    'core/str'
-], function(Ajax, Notification, Str) {
+    'core/str',
+    'core/user_date'
+], function(Ajax, Notification, Str, UserDate) {
     var SELECTORS = {
         root: '#local-quicknote-root',
         panel: '[data-region="panel"]',
@@ -56,14 +57,6 @@ define([
         var div = document.createElement('div');
         div.textContent = String(value || '');
         return div.innerHTML;
-    };
-
-    var formatTimestamp = function(timestamp) {
-        if (!timestamp) {
-            return '';
-        }
-
-        return new Date(timestamp * 1000).toLocaleString();
     };
 
     var updateSearchVisibility = function() {
@@ -145,17 +138,31 @@ define([
         return state.root.querySelector(SELECTORS.note + '[data-note-key="' + key + '"]');
     };
 
-    var setNoteStatus = function(noteEl, text) {
+    var setNoteStatus = function(noteEl, text, timestamp) {
         var statusEl = noteEl.querySelector(SELECTORS.status);
         if (statusEl) {
-            statusEl.textContent = text || '';
-        }
-    };
-
-    var setNoteUpdated = function(noteEl, timestamp) {
-        var updatedEl = noteEl.querySelector(SELECTORS.updated);
-        if (updatedEl) {
-            updatedEl.textContent = state.strings.updatedlabel + ': ' + formatTimestamp(timestamp);
+            if (text) {
+                statusEl.textContent = text;
+            } else if (timestamp) {
+                Str.get_string('strftimedatetimeshort', 'langconfig').then(function(format) {
+                    return UserDate.get([{
+                        timestamp: timestamp,
+                        format: format
+                    }]);
+                }).then(function(dates) {
+                    var noteKey = noteEl.getAttribute('data-note-key');
+                    var note = getNoteByKey(noteKey);
+                    // Only update if the note hasn't changed its status while we were fetching the date
+                    if (note && !note.status && note.timemodified === timestamp) {
+                        statusEl.textContent = state.strings.updatedlabel + ': ' + dates[0];
+                    }
+                    return true;
+                }).catch(function() {
+                    statusEl.textContent = state.strings.updatedlabel + ': ' + new Date(timestamp * 1000).toLocaleString();
+                });
+            } else {
+                statusEl.textContent = '';
+            }
         }
     };
 
@@ -236,9 +243,8 @@ define([
             deletebutton.setAttribute('data-noteid', note.id || 0);
         }
 
-        setNoteStatus(noteEl, note.status);
+        setNoteStatus(noteEl, note.status, note.timemodified);
         setNoteQuote(noteEl, note);
-        setNoteUpdated(noteEl, note.timemodified);
         setNoteLocation(noteEl, note.url, note.hasquote);
 
         var copyBtn = noteEl.querySelector('[data-action="copy-note"]');
@@ -466,7 +472,7 @@ define([
         var noteEl = getNoteElementByKey(note.clientid);
 
         if (noteEl) {
-            setNoteStatus(noteEl, state.strings.savingtext);
+            setNoteStatus(noteEl, state.strings.savingtext, note.timemodified);
         }
 
         request = Ajax.call([{
@@ -501,16 +507,21 @@ define([
             note.status = state.strings.savedtext;
 
             if (currentnoteEl) {
-                setNoteStatus(currentnoteEl, note.status);
+                setNoteStatus(currentnoteEl, note.status, note.timemodified);
                 setNoteQuote(currentnoteEl, note);
                 setNoteLocation(currentnoteEl, note.url, note.hasquote);
+
+                setTimeout(function() {
+                    note.status = '';
+                    setNoteStatus(currentnoteEl, note.status, note.timemodified);
+                }, 3000);
             }
             return response;
         }).catch(function(error) {
             note.status = state.strings.errortext;
 
             if (noteEl) {
-                setNoteStatus(noteEl, note.status);
+                setNoteStatus(noteEl, note.status, note.timemodified);
             }
 
             Notification.exception(error);

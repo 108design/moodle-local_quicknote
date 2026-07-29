@@ -238,11 +238,25 @@
     filter: brightness(0.75);
 }
 
+.local-quicknote__note-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.local-quicknote__delete i {
+    margin-right: 0;
+}
+
 .local-quicknote__meta,
 .local-quicknote__status {
-    margin-bottom: 0.5rem;
     font-size: 0.8rem;
     color: #5f6b7a;
+}
+
+.local-quicknote__meta {
+    margin-bottom: 0.5rem;
 }
 
 .local-quicknote__meta a {

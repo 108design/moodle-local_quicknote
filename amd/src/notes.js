@@ -918,6 +918,9 @@ define([
 
         // Listen for highlight messages triggered inside iframes.
         window.addEventListener('message', function(event) {
+            if (event.origin !== window.location.origin) {
+                return;
+            }
             if (event.data && event.data.app === 'quicknote' && event.data.action === 'iframe_highlight') {
                 var text = event.data.text;
                 if (text && text.length > MIN_SELECTION_LENGTH) {
@@ -1044,7 +1047,7 @@ define([
                         app: 'quicknote',
                         action: 'iframe_highlight',
                         text: text
-                    }, '*');
+                    }, window.location.origin);
                 }
             });
         }

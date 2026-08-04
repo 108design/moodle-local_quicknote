@@ -56,7 +56,7 @@ define([
     var escapeHtml = function(value) {
         var div = document.createElement('div');
         div.textContent = String(value || '');
-        return div.innerHTML;
+        return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     };
 
     var updateSearchVisibility = function() {
@@ -177,8 +177,11 @@ define([
             return;
         }
 
-        locationEl.innerHTML = escapeHtml(state.strings.locationlabel) + ': ' +
-            '<a href="' + escapeHtml(url) + '">' + escapeHtml(url) + '</a>';
+        locationEl.textContent = state.strings.locationlabel + ': ';
+        var a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.textContent = url;
+        locationEl.appendChild(a);
     };
 
     var setNoteQuote = function(noteEl, note) {

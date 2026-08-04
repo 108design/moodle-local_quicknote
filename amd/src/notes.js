@@ -207,7 +207,11 @@ define([
             quote.textContent = note.quotetext;
         }
         if (link) {
-            link.setAttribute('href', note.quoteurl || '#');
+            var safeHref = '#';
+            if (note.quoteurl && /^(https?:\/\/|#)/i.test(note.quoteurl)) {
+                safeHref = note.quoteurl;
+            }
+            link.setAttribute('href', safeHref);
             if (note.quoteurl) {
                 link.removeAttribute('hidden');
             } else {
@@ -775,6 +779,11 @@ define([
         var handleQuoteClick = function(e, quoteLink) {
             var targetUrl = quoteLink.getAttribute('href');
             var currentUrl = window.location.href.split('#')[0];
+
+            if (targetUrl && !/^(https?:\/\/|#)/i.test(targetUrl)) {
+                e.preventDefault();
+                return;
+            }
 
             if (targetUrl && (targetUrl.indexOf(currentUrl) === 0 || targetUrl.indexOf('#') === 0)) {
                 e.preventDefault();

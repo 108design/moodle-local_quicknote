@@ -97,8 +97,8 @@ class get_notes extends \external_api {
                 'quote' => new \external_value(PARAM_RAW, 'Selected quote text.'),
                 'hasquote' => new \external_value(PARAM_BOOL, 'Whether the note contains a quote.'),
                 'quotetext' => new \external_value(PARAM_RAW, 'Quote text safe for template rendering.'),
-                'quoteurl' => new \external_value(PARAM_RAW, 'URL pointing to the selected quote.'),
-                'url' => new \external_value(PARAM_RAW_TRIMMED, 'Last saved page URL.'),
+                'quoteurl' => new \external_value(PARAM_URL, 'URL pointing to the selected quote.'),
+                'url' => new \external_value(PARAM_URL, 'Last saved page URL.'),
                 'timecreated' => new \external_value(PARAM_INT, 'Creation timestamp.'),
                 'timemodified' => new \external_value(PARAM_INT, 'Last modification timestamp.'),
             ])

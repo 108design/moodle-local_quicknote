@@ -51,9 +51,9 @@ class save_note extends \external_api {
             'id' => new \external_value(PARAM_INT, 'Existing note id, or 0 to create a new note.', VALUE_DEFAULT, 0),
             'courseid' => new \external_value(PARAM_INT, 'Course id.'),
             'content' => new \external_value(PARAM_RAW, 'Note content.'),
-            'url' => new \external_value(PARAM_RAW_TRIMMED, 'Current page URL.'),
+            'url' => new \external_value(PARAM_URL, 'Current page URL.'),
             'quote' => new \external_value(PARAM_RAW, 'Selected quote text.', VALUE_OPTIONAL),
-            'quoteurl' => new \external_value(PARAM_RAW, 'URL pointing to the selected quote.', VALUE_OPTIONAL),
+            'quoteurl' => new \external_value(PARAM_URL, 'URL pointing to the selected quote.', VALUE_OPTIONAL),
         ]);
     }
 
@@ -166,8 +166,8 @@ class save_note extends \external_api {
             'quote' => new \external_value(PARAM_RAW, 'Selected quote text.'),
             'hasquote' => new \external_value(PARAM_BOOL, 'Whether the note contains a quote.'),
             'quotetext' => new \external_value(PARAM_RAW, 'Quote text safe for template rendering.'),
-            'quoteurl' => new \external_value(PARAM_RAW, 'URL pointing to the selected quote.'),
-            'url' => new \external_value(PARAM_RAW_TRIMMED, 'Last saved page URL.'),
+            'quoteurl' => new \external_value(PARAM_URL, 'URL pointing to the selected quote.'),
+            'url' => new \external_value(PARAM_URL, 'Last saved page URL.'),
             'timecreated' => new \external_value(PARAM_INT, 'Creation timestamp.'),
             'timemodified' => new \external_value(PARAM_INT, 'Last modification timestamp.'),
         ]);
@@ -190,8 +190,8 @@ class save_note extends \external_api {
             'quote' => $quote,
             'hasquote' => trim($quote) !== '',
             'quotetext' => $quote,
-            'quoteurl' => (string) ($note->quoteurl ?? ''),
-            'url' => (string) $note->url,
+            'quoteurl' => clean_param((string) ($note->quoteurl ?? ''), PARAM_URL),
+            'url' => clean_param((string) $note->url, PARAM_URL),
             'timecreated' => (int) $note->timecreated,
             'timemodified' => (int) $note->timemodified,
         ];

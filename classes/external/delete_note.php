@@ -64,10 +64,10 @@ class delete_note extends \external_api {
             'noteid' => $noteid,
         ]);
 
-        $note = $DB->get_record('local_quicknote_notes', ['id' => $params['noteid']], '*', MUST_EXIST);
+        $note = $DB->get_record('local_quicknote_notes', ['id' => $params['noteid']]);
 
-        if ((int) $note->userid !== (int) $USER->id) {
-            throw new invalid_parameter_exception('You can only delete your own notes.');
+        if (!$note || (int) $note->userid !== (int) $USER->id) {
+            throw new invalid_parameter_exception('Note not found or you do not have permission to delete it.');
         }
 
         $course = get_course($note->courseid);

@@ -46,6 +46,18 @@ class observers {
     }
 
     /**
+     * Delete the per-course synthetic config when a course is deleted.
+     *
+     * @param \core\event\course_deleted $event The event triggered.
+     */
+    public static function course_deleted(\core\event\course_deleted $event) {
+        global $DB;
+        $courseid = $event->objectid;
+
+        $DB->delete_records('config_plugins', ['plugin' => 'local_quicknote_course_' . $courseid]);
+    }
+
+    /**
      * Delete all notes for a user in a course when they are unenrolled.
      *
      * @param \core\event\user_enrolment_deleted $event The event triggered.

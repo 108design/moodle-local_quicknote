@@ -105,17 +105,17 @@ class save_note extends \external_api {
         $record = (object) [
             'userid' => $USER->id,
             'courseid' => $course->id,
-            'content' => $params['content'],
+            'content' => core_text::substr($params['content'], 0, 20000),
             'url' => core_text::substr($params['url'], 0, 255),
             'timemodified' => $now,
         ];
 
         if (array_key_exists('quote', $params)) {
-            $record->quote = $params['quote'];
+            $record->quote = core_text::substr($params['quote'], 0, 5000);
         }
 
         if (array_key_exists('quoteurl', $params)) {
-            $record->quoteurl = $params['quoteurl'];
+            $record->quoteurl = core_text::substr($params['quoteurl'], 0, 1024);
         }
 
         if (!empty($params['id'])) {

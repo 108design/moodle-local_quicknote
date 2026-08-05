@@ -36,6 +36,11 @@ class observers {
      * @param \core\event\course_updated $event The event triggered.
      */
     public static function course_updated(\core\event\course_updated $event) {
+        // Skip if Moodle 4.4+ hook already handles persistence.
+        if (class_exists('\core\hook\course\after_form_submission')) {
+            return;
+        }
+
         $courseid = $event->objectid;
 
         $enabled = optional_param('local_quicknote_enabled', null, PARAM_INT);

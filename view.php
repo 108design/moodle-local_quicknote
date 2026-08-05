@@ -127,7 +127,7 @@ if ($export === 'pdf') {
     $pdf->SetFont('helvetica', '', 12);
 
     $title = get_string('notescenter', 'local_quicknote');
-    $pdf->writeHTML('<h2 style="margin-bottom: 16px;>' . $title . '</h2>', true, false, true, false, '');
+    $pdf->writeHTML('<h2 style="margin-bottom: 16px;">' . $title . '</h2>', true, false, true, false, '');
 
     if (empty($noterecords)) {
         $pdf->writeHTML('<p>' . get_string('note:empty', 'local_quicknote') . '</p>', true, false, true, false, '');
@@ -167,7 +167,7 @@ if ($export === 'pdf') {
                 $html .= '<blockquote style="margin-bottom: 4px; color: #555;"><i>' . $quote . '</i>';
                 if (!empty($record->quoteurl)) {
                     $html .= '<br><small><a href="'
-                        . $record->quoteurl
+                        . s(clean_param($record->quoteurl, PARAM_URL))
                         . '">'
                         . get_string('note:viewintext', 'local_quicknote')
                         . '</a></small>';
@@ -176,7 +176,7 @@ if ($export === 'pdf') {
             } else {
                 if (!empty($record->url)) {
                     $html .= '<p style="margin-bottom: 4px;"><small><a href="'
-                        . $record->url
+                        . s(clean_param($record->url, PARAM_URL))
                         . '" style="color: #6c757d; text-decoration: none;">'
                         . get_string('note:viewintext', 'local_quicknote')
                         . '</a></small></p>';
@@ -228,12 +228,12 @@ if ($export === 'md') {
                 $quote = html_entity_decode(format_text($record->quote, FORMAT_PLAIN), ENT_QUOTES, 'UTF-8');
                 $md .= "> " . str_replace("\n", "\n> ", $quote) . "\n";
                 if (!empty($record->quoteurl)) {
-                    $md .= "> [_" . get_string('note:viewintext', 'local_quicknote') . "_](" . $record->quoteurl . ")\n";
+                    $md .= "> [_" . get_string('note:viewintext', 'local_quicknote') . "_](" . s(clean_param($record->quoteurl, PARAM_URL)) . ")\n";
                 }
                 $md .= "\n";
             } else {
                 if (!empty($record->url)) {
-                    $md .= "[_" . get_string('note:viewintext', 'local_quicknote') . "_](" . $record->url . ")\n\n";
+                    $md .= "[_" . get_string('note:viewintext', 'local_quicknote') . "_](" . s(clean_param($record->url, PARAM_URL)) . ")\n\n";
                 } else {
                     $md .= "\n";
                 }

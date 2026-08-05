@@ -26,9 +26,6 @@ namespace local_quicknote\external;
 
 defined('MOODLE_INTERNAL') || die();
 
-global $CFG;
-require_once($CFG->libdir . '/externallib.php');
-
 use context_course;
 use core_text;
 use invalid_parameter_exception;
@@ -40,20 +37,20 @@ use invalid_parameter_exception;
  * @copyright   2026 Matheus Mathias
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class save_note extends \external_api {
+class save_note extends \core_external\external_api {
     /**
      * Define the parameters for execute().
      *
-     * @return \external_function_parameters
+     * @return \core_external\external_function_parameters
      */
-    public static function execute_parameters(): \external_function_parameters {
-        return new \external_function_parameters([
-            'id' => new \external_value(PARAM_INT, 'Existing note id, or 0 to create a new note.', VALUE_DEFAULT, 0),
-            'courseid' => new \external_value(PARAM_INT, 'Course id.'),
-            'content' => new \external_value(PARAM_RAW, 'Note content.'),
-            'url' => new \external_value(PARAM_URL, 'Current page URL.'),
-            'quote' => new \external_value(PARAM_RAW, 'Selected quote text.', VALUE_OPTIONAL),
-            'quoteurl' => new \external_value(PARAM_URL, 'URL pointing to the selected quote.', VALUE_OPTIONAL),
+    public static function execute_parameters(): \core_external\external_function_parameters {
+        return new \core_external\external_function_parameters([
+            'id' => new \core_external\external_value(PARAM_INT, 'Note id, 0 for new.', VALUE_DEFAULT, 0),
+            'courseid' => new \core_external\external_value(PARAM_INT, 'Course id.'),
+            'content' => new \core_external\external_value(PARAM_RAW, 'Note content.', VALUE_DEFAULT, ''),
+            'url' => new \core_external\external_value(PARAM_URL, 'Current page URL.'),
+            'quote' => new \core_external\external_value(PARAM_RAW, 'Selected quote text.', VALUE_OPTIONAL),
+            'quoteurl' => new \core_external\external_value(PARAM_URL, 'URL pointing to the selected quote.', VALUE_OPTIONAL),
         ]);
     }
 
@@ -155,21 +152,21 @@ class save_note extends \external_api {
     /**
      * Define the return structure for execute().
      *
-     * @return \external_single_structure
+     * @return \core_external\external_single_structure
      */
-    public static function execute_returns(): \external_single_structure {
-        return new \external_single_structure([
-            'id' => new \external_value(PARAM_INT, 'Note id.'),
-            'userid' => new \external_value(PARAM_INT, 'Owner user id.'),
-            'courseid' => new \external_value(PARAM_INT, 'Course id.'),
-            'content' => new \external_value(PARAM_RAW, 'Note content.'),
-            'quote' => new \external_value(PARAM_RAW, 'Selected quote text.'),
-            'hasquote' => new \external_value(PARAM_BOOL, 'Whether the note contains a quote.'),
-            'quotetext' => new \external_value(PARAM_RAW, 'Quote text safe for template rendering.'),
-            'quoteurl' => new \external_value(PARAM_URL, 'URL pointing to the selected quote.'),
-            'url' => new \external_value(PARAM_URL, 'Last saved page URL.'),
-            'timecreated' => new \external_value(PARAM_INT, 'Creation timestamp.'),
-            'timemodified' => new \external_value(PARAM_INT, 'Last modification timestamp.'),
+    public static function execute_returns(): \core_external\external_single_structure {
+        return new \core_external\external_single_structure([
+            'id' => new \core_external\external_value(PARAM_INT, 'Note id.'),
+            'userid' => new \core_external\external_value(PARAM_INT, 'Owner user id.'),
+            'courseid' => new \core_external\external_value(PARAM_INT, 'Course id.'),
+            'content' => new \core_external\external_value(PARAM_RAW, 'Note content.'),
+            'quote' => new \core_external\external_value(PARAM_RAW, 'Selected quote text.'),
+            'hasquote' => new \core_external\external_value(PARAM_BOOL, 'Whether the note contains a quote.'),
+            'quotetext' => new \core_external\external_value(PARAM_RAW, 'Quote text safe for template rendering.'),
+            'quoteurl' => new \core_external\external_value(PARAM_URL, 'URL pointing to the selected quote.'),
+            'url' => new \core_external\external_value(PARAM_URL, 'Last saved page URL.'),
+            'timecreated' => new \core_external\external_value(PARAM_INT, 'Creation timestamp.'),
+            'timemodified' => new \core_external\external_value(PARAM_INT, 'Last modification timestamp.'),
         ]);
     }
 

@@ -26,9 +26,6 @@ namespace local_quicknote\external;
 
 defined('MOODLE_INTERNAL') || die();
 
-global $CFG;
-require_once($CFG->libdir . '/externallib.php');
-
 use context_course;
 use invalid_parameter_exception;
 
@@ -39,15 +36,15 @@ use invalid_parameter_exception;
  * @copyright   2026 Matheus Mathias
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class delete_note extends \external_api {
+class delete_note extends \core_external\external_api {
     /**
      * Define the parameters for execute().
      *
-     * @return \external_function_parameters
+     * @return \core_external\external_function_parameters
      */
-    public static function execute_parameters(): \external_function_parameters {
-        return new \external_function_parameters([
-            'noteid' => new \external_value(PARAM_INT, 'Note id to delete.'),
+    public static function execute_parameters(): \core_external\external_function_parameters {
+        return new \core_external\external_function_parameters([
+            'noteid' => new \core_external\external_value(PARAM_INT, 'Note id to delete.'),
         ]);
     }
 
@@ -87,12 +84,12 @@ class delete_note extends \external_api {
     /**
      * Define the return structure for execute().
      *
-     * @return \external_single_structure
+     * @return \core_external\external_single_structure
      */
-    public static function execute_returns(): \external_single_structure {
-        return new \external_single_structure([
-            'noteid' => new \external_value(PARAM_INT, 'Deleted note id.'),
-            'deleted' => new \external_value(PARAM_BOOL, 'Whether the note was deleted.'),
+    public static function execute_returns(): \core_external\external_single_structure {
+        return new \core_external\external_single_structure([
+            'noteid' => new \core_external\external_value(PARAM_INT, 'Deleted note id.'),
+            'deleted' => new \core_external\external_value(PARAM_BOOL, 'Whether the note was deleted.'),
         ]);
     }
 }

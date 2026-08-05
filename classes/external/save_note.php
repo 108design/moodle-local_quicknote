@@ -24,8 +24,6 @@
 
 namespace local_quicknote\external;
 
-defined('MOODLE_INTERNAL') || die();
-
 use context_course;
 use core_text;
 use invalid_parameter_exception;

@@ -30,8 +30,11 @@ function xmldb_local_quicknote_uninstall() {
     global $DB;
 
     // Delete all per-course synthetic configs left behind by this plugin.
-    $DB->delete_records_select('config_plugins', $DB->sql_like('plugin', ':p'),
-        ['p' => $DB->sql_like_escape('local_quicknote_course_') . '%']);
+    $DB->delete_records_select(
+        'config_plugins',
+        $DB->sql_like('plugin', ':p'),
+        ['p' => $DB->sql_like_escape('local_quicknote_course_') . '%']
+    );
 
     return true;
 }

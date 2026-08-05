@@ -228,12 +228,14 @@ if ($export === 'md') {
                 $quote = html_entity_decode(format_text($record->quote, FORMAT_PLAIN), ENT_QUOTES, 'UTF-8');
                 $md .= "> " . str_replace("\n", "\n> ", $quote) . "\n";
                 if (!empty($record->quoteurl)) {
-                    $md .= "> [_" . get_string('note:viewintext', 'local_quicknote') . "_](" . s(clean_param($record->quoteurl, PARAM_URL)) . ")\n";
+                    $md .= "> [_" . get_string('note:viewintext', 'local_quicknote') . "_](" .
+                        s(clean_param($record->quoteurl, PARAM_URL)) . ")\n";
                 }
                 $md .= "\n";
             } else {
                 if (!empty($record->url)) {
-                    $md .= "[_" . get_string('note:viewintext', 'local_quicknote') . "_](" . s(clean_param($record->url, PARAM_URL)) . ")\n\n";
+                    $md .= "[_" . get_string('note:viewintext', 'local_quicknote') . "_](" .
+                        s(clean_param($record->url, PARAM_URL)) . ")\n\n";
                 } else {
                     $md .= "\n";
                 }

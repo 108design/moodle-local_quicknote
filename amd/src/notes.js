@@ -56,7 +56,7 @@ define([
     var escapeHtml = function(value) {
         var div = document.createElement('div');
         div.textContent = String(value || '');
-        return div.innerHTML;
+        return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     };
 
     var updateSearchVisibility = function() {
@@ -177,8 +177,11 @@ define([
             return;
         }
 
-        locationEl.innerHTML = escapeHtml(state.strings.locationlabel) + ': ' +
-            '<a href="' + escapeHtml(url) + '">' + escapeHtml(url) + '</a>';
+        locationEl.textContent = state.strings.locationlabel + ': ';
+        var a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.textContent = url;
+        locationEl.appendChild(a);
     };
 
     var setNoteQuote = function(noteEl, note) {
@@ -204,7 +207,11 @@ define([
             quote.textContent = note.quotetext;
         }
         if (link) {
-            link.setAttribute('href', note.quoteurl || '#');
+            var safeHref = '#';
+            if (note.quoteurl && /^(https?:\/\/|#)/i.test(note.quoteurl)) {
+                safeHref = note.quoteurl;
+            }
+            link.setAttribute('href', safeHref);
             if (note.quoteurl) {
                 link.removeAttribute('hidden');
             } else {
@@ -773,6 +780,11 @@ define([
             var targetUrl = quoteLink.getAttribute('href');
             var currentUrl = window.location.href.split('#')[0];
 
+            if (targetUrl && !/^(https?:\/\/|#)/i.test(targetUrl)) {
+                e.preventDefault();
+                return;
+            }
+
             if (targetUrl && (targetUrl.indexOf(currentUrl) === 0 || targetUrl.indexOf('#') === 0)) {
                 e.preventDefault();
 
@@ -906,6 +918,9 @@ define([
 
         // Listen for highlight messages triggered inside iframes.
         window.addEventListener('message', function(event) {
+            if (event.origin !== window.location.origin) {
+                return;
+            }
             if (event.data && event.data.app === 'quicknote' && event.data.action === 'iframe_highlight') {
                 var text = event.data.text;
                 if (text && text.length > MIN_SELECTION_LENGTH) {
@@ -1032,7 +1047,7 @@ define([
                         app: 'quicknote',
                         action: 'iframe_highlight',
                         text: text
-                    }, '*');
+                    }, window.location.origin);
                 }
             });
         }

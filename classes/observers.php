@@ -36,6 +36,11 @@ class observers {
      * @param \core\event\course_updated $event The event triggered.
      */
     public static function course_updated(\core\event\course_updated $event) {
+        // Skip if Moodle 4.4+ hook already handles persistence.
+        if (class_exists('\core\hook\course\after_form_submission')) {
+            return;
+        }
+
         $courseid = $event->objectid;
 
         $enabled = optional_param('local_quicknote_enabled', null, PARAM_INT);
@@ -43,6 +48,18 @@ class observers {
         if ($enabled !== null) {
             set_config('enabled', $enabled, 'local_quicknote_course_' . $courseid);
         }
+    }
+
+    /**
+     * Delete the per-course synthetic config when a course is deleted.
+     *
+     * @param \core\event\course_deleted $event The event triggered.
+     */
+    public static function course_deleted(\core\event\course_deleted $event) {
+        global $DB;
+        $courseid = $event->objectid;
+
+        $DB->delete_records('config_plugins', ['plugin' => 'local_quicknote_course_' . $courseid]);
     }
 
     /**

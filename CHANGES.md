@@ -1,5 +1,23 @@
 # Moodle plugin: local_quicknote
 
+## 0.9.0 (2026-08-05)
+- **Security & Vulnerability Fixes**:
+  - Fixed HTML escaping in the sidebar to prevent Cross-Site Scripting (XSS) vulnerabilities.
+  - Added strict origin checks for cross-window iframe highlight messages.
+  - Sanitized URLs and fixed HTML output during PDF and Markdown note exports.
+  - Limited the maximum length of note content and quotes to prevent excessive data storage (DoS prevention).
+  - Enhanced URL handling across notes functionality.
+- **Modernization & Compatibility**:
+  - Dropped support for Moodle 4.1 and older. The plugin now requires Moodle 4.2+.
+  - Refactored external API classes to use the modern `core_external` namespace structure.
+  - Added compatibility checks for Moodle 4.4+ Hooks API in the `course_updated` event handler.
+- **Stability & Cleanup**:
+  - Added `course_deleted` event handler to properly clean up orphaned notes when a course is removed.
+  - Ensured complete data cleanup upon plugin uninstallation.
+  - Improved error handling during note deletion.
+- **UI/UX**:
+  - Replaced the sidebar toggle icon (the previous one clashed with Moodle's native edit action icon).
+
 ## 0.8.4 (2026-07-29)
 - **Refactoring & Performance**:
   - Removed jQuery dependency from `view.js` and `notes.js` modules, replacing it with native standard JavaScript methods.

@@ -47,8 +47,8 @@ class save_note extends \core_external\external_api {
             'courseid' => new \core_external\external_value(PARAM_INT, 'Course id.'),
             'content' => new \core_external\external_value(PARAM_RAW, 'Note content.', VALUE_DEFAULT, ''),
             'url' => new \core_external\external_value(PARAM_URL, 'Current page URL.'),
-            'quote' => new \core_external\external_value(PARAM_RAW, 'Selected quote text.', VALUE_OPTIONAL),
-            'quoteurl' => new \core_external\external_value(PARAM_URL, 'URL pointing to the selected quote.', VALUE_OPTIONAL),
+            'quote' => new \core_external\external_value(PARAM_RAW, 'Selected quote text.', VALUE_DEFAULT, null),
+            'quoteurl' => new \core_external\external_value(PARAM_URL, 'URL pointing to the selected quote.', VALUE_DEFAULT, null),
         ]);
     }
 
@@ -105,11 +105,11 @@ class save_note extends \core_external\external_api {
             'timemodified' => $now,
         ];
 
-        if (array_key_exists('quote', $params)) {
+        if (array_key_exists('quote', $params) && $params['quote'] !== null) {
             $record->quote = core_text::substr($params['quote'], 0, 5000);
         }
 
-        if (array_key_exists('quoteurl', $params)) {
+        if (array_key_exists('quoteurl', $params) && $params['quoteurl'] !== null) {
             $record->quoteurl = core_text::substr($params['quoteurl'], 0, 1024);
         }
 

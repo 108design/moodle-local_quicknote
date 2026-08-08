@@ -1,0 +1,173 @@
+<?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+namespace local_quicknote;
+
+use advanced_testcase;
+use local_quicknote\external\save_note;
+use local_quicknote\external\get_notes;
+use local_quicknote\external\delete_note;
+
+/**
+ * External library tests for local_quicknote.
+ *
+ * @package    local_quicknote
+ * @category   test
+ * @copyright  2026 Matheus Mathias
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers     \local_quicknote\external\save_note
+ * @covers     \local_quicknote\external\get_notes
+ * @covers     \local_quicknote\external\delete_note
+ */
+class externallib_test extends advanced_testcase {
+    public function test_save_note() {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $user = $generator->create_user();
+        $generator->enrol_user($user->id, $course->id, 'student');
+
+        $this->setUser($user);
+
+        // Create new note.
+        $result = save_note::execute(
+            0,
+            $course->id,
+            'My first note',
+            'https://example.com/page1',
+            'Quote text',
+            'https://example.com/quote1'
+        );
+        $result = \core_external\external_api::clean_returnvalue(save_note::execute_returns(), $result);
+
+        $this->assertNotEmpty($result['id']);
+        $this->assertEquals($user->id, $result['userid']);
+        $this->assertEquals($course->id, $result['courseid']);
+        $this->assertEquals('My first note', $result['content']);
+        $this->assertEquals('Quote text', $result['quote']);
+
+        $noteid = $result['id'];
+
+        // Update existing note.
+        $result2 = save_note::execute(
+            $noteid,
+            $course->id,
+            'Updated note',
+            'https://example.com/page2'
+        );
+        $result2 = \core_external\external_api::clean_returnvalue(save_note::execute_returns(), $result2);
+
+        $this->assertEquals($noteid, $result2['id']);
+        $this->assertEquals('Updated note', $result2['content']);
+        $this->assertEquals('Quote text', $result2['quote']); // Preserved from previous.
+    }
+
+    public function test_save_note_wrong_course() {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course1 = $generator->create_course();
+        $course2 = $generator->create_course();
+        $user = $generator->create_user();
+
+        $generator->enrol_user($user->id, $course1->id, 'student');
+        $generator->enrol_user($user->id, $course2->id, 'student');
+
+        $this->setUser($user);
+
+        $result = save_note::execute(0, $course1->id, 'Note in course 1', 'https://example.com');
+        $noteid = $result['id'];
+
+        $this->expectException(\invalid_parameter_exception::class);
+        $this->expectExceptionMessage('The note does not belong to the provided course.');
+
+        save_note::execute($noteid, $course2->id, 'Update in wrong course', 'https://example.com');
+    }
+
+    public function test_get_notes() {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $user1 = $generator->create_user();
+        $user2 = $generator->create_user();
+
+        $generator->enrol_user($user1->id, $course->id, 'student');
+        $generator->enrol_user($user2->id, $course->id, 'student');
+
+        // User 1 creates a note.
+        $this->setUser($user1);
+        save_note::execute(0, $course->id, 'User 1 note', 'https://example.com');
+
+        // User 2 creates two notes.
+        $this->setUser($user2);
+        save_note::execute(0, $course->id, 'User 2 note 1', 'https://example.com/1');
+        save_note::execute(0, $course->id, 'User 2 note 2', 'https://example.com/2');
+
+        // Check User 2 gets their 2 notes.
+        $result = get_notes::execute($course->id);
+        $result = \core_external\external_api::clean_returnvalue(get_notes::execute_returns(), $result);
+
+        $this->assertCount(2, $result);
+        $this->assertEquals('User 2 note 2', $result[0]['content']);
+        $this->assertEquals('User 2 note 1', $result[1]['content']);
+
+        // Check User 1 gets their 1 note.
+        $this->setUser($user1);
+        $result = get_notes::execute($course->id);
+        $result = \core_external\external_api::clean_returnvalue(get_notes::execute_returns(), $result);
+        $this->assertCount(1, $result);
+        $this->assertEquals('User 1 note', $result[0]['content']);
+    }
+
+    public function test_delete_note() {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $user1 = $generator->create_user();
+        $user2 = $generator->create_user();
+
+        $generator->enrol_user($user1->id, $course->id, 'student');
+        $generator->enrol_user($user2->id, $course->id, 'student');
+
+        $this->setUser($user1);
+        $result = save_note::execute(0, $course->id, 'Note to delete', 'https://example.com');
+        $noteid = $result['id'];
+
+        // User 2 tries to delete User 1's note (should fail).
+        $this->setUser($user2);
+        try {
+            delete_note::execute($noteid);
+            $this->fail('User 2 should not be able to delete User 1 note');
+        } catch (\invalid_parameter_exception $e) {
+            $this->assertStringContainsString('Note not found or you do not have permission to delete it.', $e->getMessage());
+        }
+
+        // User 1 deletes their own note (should succeed).
+        $this->setUser($user1);
+        $deleteresult = delete_note::execute($noteid);
+        $deleteresult = \core_external\external_api::clean_returnvalue(delete_note::execute_returns(), $deleteresult);
+        $this->assertTrue($deleteresult['deleted']);
+
+        // Note should be gone.
+        $notesresult = get_notes::execute($course->id);
+        $notesresult = \core_external\external_api::clean_returnvalue(get_notes::execute_returns(), $notesresult);
+        $this->assertCount(0, $notesresult);
+    }
+}

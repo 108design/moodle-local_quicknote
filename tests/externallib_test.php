@@ -32,8 +32,8 @@ use local_quicknote\external\delete_note;
  * @covers     \local_quicknote\external\get_notes
  * @covers     \local_quicknote\external\delete_note
  */
-class externallib_test extends advanced_testcase {
-    public function test_save_note() {
+final class externallib_test extends advanced_testcase {
+    public function test_save_note(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -77,7 +77,7 @@ class externallib_test extends advanced_testcase {
         $this->assertEquals('Quote text', $result2['quote']); // Preserved from previous.
     }
 
-    public function test_save_note_wrong_course() {
+    public function test_save_note_wrong_course(): void {
         $this->resetAfterTest();
 
         $generator = $this->getDataGenerator();
@@ -99,7 +99,7 @@ class externallib_test extends advanced_testcase {
         save_note::execute($noteid, $course2->id, 'Update in wrong course', 'https://example.com');
     }
 
-    public function test_get_notes() {
+    public function test_get_notes(): void {
         $this->resetAfterTest();
 
         $generator = $this->getDataGenerator();
@@ -135,7 +135,7 @@ class externallib_test extends advanced_testcase {
         $this->assertEquals('User 1 note', $result[0]['content']);
     }
 
-    public function test_delete_note() {
+    public function test_delete_note(): void {
         $this->resetAfterTest();
 
         $generator = $this->getDataGenerator();

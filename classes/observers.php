@@ -59,6 +59,10 @@ class observers {
         global $DB;
         $courseid = $event->objectid;
 
+        // Remove any notes still attached to this course (covers non-enrolled authors).
+        $DB->delete_records('local_quicknote_notes', ['courseid' => $courseid]);
+
+        // Remove the synthetic per-course configuration.
         $DB->delete_records('config_plugins', ['plugin' => 'local_quicknote_course_' . $courseid]);
     }
 

@@ -78,7 +78,7 @@ function xmldb_local_quicknote_upgrade($oldversion) {
         // Migrate existing data from config_plugins.
         $sql = "SELECT * FROM {config_plugins} WHERE plugin LIKE 'local_quicknote_course_%'";
         $rs = $DB->get_recordset_sql($sql);
-        
+
         $coursedata = [];
         foreach ($rs as $record) {
             $courseid = (int) str_replace('local_quicknote_course_', '', $record->plugin);

@@ -29,6 +29,7 @@ $string['allcourses'] = 'All courses';
 $string['config:active_course'] = 'Activate QuickNote in this course';
 $string['default_enabled'] = 'Enabled by default';
 $string['default_enabled_desc'] = 'Defines whether the notes icon will be active by default in courses that have not yet been manually configured.';
+$string['disabledforcourse'] = 'QuickNote is disabled in this course.';
 $string['exportmd'] = 'Export to Markdown';
 $string['exportpdf'] = 'Export to PDF';
 $string['filterbycourse'] = 'Filter by course';

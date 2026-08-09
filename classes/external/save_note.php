@@ -96,6 +96,10 @@ class save_note extends \core_external\external_api {
         $context = context_course::instance($course->id);
         self::validate_context($context);
 
+        if (!\local_quicknote\hooks::is_enabled_for_course($course)) {
+            throw new \moodle_exception('disabledforcourse', 'local_quicknote');
+        }
+
         $now = time();
         $record = (object) [
             'userid' => $USER->id,

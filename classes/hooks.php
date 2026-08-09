@@ -231,7 +231,7 @@ class hooks {
      * @param \stdClass $course The course object.
      * @return bool
      */
-    private static function is_enabled_for_course(\stdClass $course): bool {
+    public static function is_enabled_for_course(\stdClass $course): bool {
         $enabled = get_config('local_quicknote_course_' . $course->id, 'enabled');
 
         if ($enabled === false || $enabled === null || $enabled === '') {

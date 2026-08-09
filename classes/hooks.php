@@ -56,7 +56,9 @@ class hooks {
         $enabled = ($globaldefault === false || $globaldefault === null) ? 1 : $globaldefault;
 
         if ($courseid > 0) {
-            $savedvalue = get_config('local_quicknote_course_' . $courseid, 'enabled');
+            global $DB;
+            $record = $DB->get_record('local_quicknote_course', ['courseid' => $courseid], 'enabled');
+            $savedvalue = $record ? $record->enabled : false;
             if ($savedvalue !== false && $savedvalue !== null) {
                 $enabled = $savedvalue;
             }
@@ -84,7 +86,18 @@ class hooks {
         $enabled = optional_param('local_quicknote_enabled', 0, PARAM_INT);
 
         if ($courseid > 0) {
-            set_config('enabled', $enabled, 'local_quicknote_course_' . $courseid);
+            global $DB;
+            $record = $DB->get_record('local_quicknote_course', ['courseid' => $courseid]);
+            if ($record) {
+                $record->enabled = $enabled;
+                $DB->update_record('local_quicknote_course', $record);
+            } else {
+                $record = new \stdClass();
+                $record->courseid = $courseid;
+                $record->enabled = $enabled;
+                $record->module_settings = '';
+                $DB->insert_record('local_quicknote_course', $record);
+            }
         }
     }
 
@@ -156,8 +169,10 @@ class hooks {
         // Check per-module override.
         $skipatterncheck = false;
         if ($PAGE->cm) {
-            $modulesettings = get_config('local_quicknote_course_' . $course->id, 'module_settings');
-            if ($modulesettings !== false) {
+            global $DB;
+            $record = $DB->get_record('local_quicknote_course', ['courseid' => $course->id], 'module_settings');
+            $modulesettings = $record ? $record->module_settings : null;
+            if ($modulesettings) {
                 $modulesettings = json_decode($modulesettings, true);
                 if (!is_array($modulesettings)) {
                     $modulesettings = [];
@@ -232,7 +247,9 @@ class hooks {
      * @return bool
      */
     public static function is_enabled_for_course(\stdClass $course): bool {
-        $enabled = get_config('local_quicknote_course_' . $course->id, 'enabled');
+        global $DB;
+        $record = $DB->get_record('local_quicknote_course', ['courseid' => $course->id], 'enabled');
+        $enabled = $record ? $record->enabled : false;
 
         if ($enabled === false || $enabled === null || $enabled === '') {
             // Return the default setting defined by the administrator in Site Administration.

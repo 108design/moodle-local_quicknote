@@ -47,8 +47,10 @@ class backup_local_quicknote_plugin extends backup_local_plugin {
         $pluginwrapper->add_child($coursenode);
 
         $courseid = $this->step->get_task()->get_courseid();
-        $enabled = get_config('local_quicknote_course_' . $courseid, 'enabled');
-        $coursenode->set_source_array([['id' => $courseid, 'enabled' => $enabled !== false ? $enabled : '']]);
+        global $DB;
+        $record = $DB->get_record('local_quicknote_course', ['courseid' => $courseid]);
+        $enabled = $record ? $record->enabled : '';
+        $coursenode->set_source_array([['id' => $courseid, 'enabled' => $enabled]]);
 
         // Module-level settings container node.
         $modulesnode = new backup_nested_element('quicknote_modules');
@@ -58,7 +60,7 @@ class backup_local_quicknote_plugin extends backup_local_plugin {
         $modulesnode->add_child($modulenode);
 
         // Retrieve the JSON string containing module-specific settings.
-        $settingsjson = get_config('local_quicknote_course_' . $courseid, 'module_settings');
+        $settingsjson = $record ? $record->module_settings : null;
         $settings = $settingsjson ? json_decode($settingsjson, true) : [];
         $settings = is_array($settings) ? $settings : [];
 

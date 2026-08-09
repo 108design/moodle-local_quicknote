@@ -24,5 +24,19 @@
                 <INDEX NAME="usermodified_ix" UNIQUE="false" FIELDS="userid, timemodified"/>
             </INDEXES>
         </TABLE>
+        <TABLE NAME="local_quicknote_course" COMMENT="Per-course settings for QuickNote">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+                <FIELD NAME="enabled" TYPE="int" LENGTH="4" NOTNULL="false"/>
+                <FIELD NAME="module_settings" TYPE="text" NOTNULL="false"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="courseid_ix" UNIQUE="true" FIELDS="courseid"/>
+            </INDEXES>
+        </TABLE>
     </TABLES>
 </XMLDB>

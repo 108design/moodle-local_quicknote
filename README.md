@@ -54,6 +54,13 @@ Teachers can control QuickNote per course:
 
 This makes it easy to align the tool with the pedagogical design of each course.
 
+> [!IMPORTANT]
+> **Data Access vs UI Visibility**: Disabling QuickNote at the course level completely blocks the API, making it secure for exams. However, disabling it via per-activity overrides only hides the UI; students can still access their notes on other course pages.
+
+### Backup and Restore
+
+When backing up a course, QuickNote preserves your course and activity-level settings. **Student notes and reflections are intentionally excluded** from course backups to protect student privacy and ensure personal data is not leaked when courses are restored or shared.
+
 ## 📦 Installation
 
 QuickNote can be installed like any standard Moodle local plugin.

@@ -54,5 +54,59 @@ function xmldb_local_quicknote_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026042604, 'local', 'quicknote');
     }
 
+    if ($oldversion < 2026080901) {
+        // Define table local_quicknote_course to be created.
+        $table = new xmldb_table('local_quicknote_course');
+
+        // Adding fields to table local_quicknote_course.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('enabled', XMLDB_TYPE_INTEGER, '4', null, null, null, null);
+        $table->add_field('module_settings', XMLDB_TYPE_TEXT, null, null, null, null, null);
+
+        // Adding keys to table local_quicknote_course.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Adding indexes to table local_quicknote_course.
+        $table->add_index('courseid_ix', XMLDB_INDEX_UNIQUE, ['courseid']);
+
+        // Conditionally launch create table for local_quicknote_course.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Migrate existing data from config_plugins.
+        $sql = "SELECT * FROM {config_plugins} WHERE plugin LIKE 'local_quicknote_course_%'";
+        $rs = $DB->get_recordset_sql($sql);
+
+        $coursedata = [];
+        foreach ($rs as $record) {
+            $courseid = (int) str_replace('local_quicknote_course_', '', $record->plugin);
+            if (!isset($coursedata[$courseid])) {
+                $coursedata[$courseid] = new stdClass();
+                $coursedata[$courseid]->courseid = $courseid;
+            }
+            if ($record->name === 'enabled') {
+                $coursedata[$courseid]->enabled = (int) $record->value;
+            } else if ($record->name === 'module_settings') {
+                $coursedata[$courseid]->module_settings = $record->value;
+            }
+        }
+        $rs->close();
+
+        // Insert migrated records into the new table.
+        foreach ($coursedata as $data) {
+            if (!$DB->record_exists('local_quicknote_course', ['courseid' => $data->courseid])) {
+                $DB->insert_record('local_quicknote_course', $data);
+            }
+        }
+
+        // Clean up config_plugins.
+        $DB->execute("DELETE FROM {config_plugins} WHERE plugin LIKE 'local_quicknote_course_%'");
+
+        // Quicknote savepoint reached.
+        upgrade_plugin_savepoint(true, 2026080901, 'local', 'quicknote');
+    }
+
     return true;
 }

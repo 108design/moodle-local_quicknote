@@ -46,7 +46,18 @@ class observers {
         $enabled = optional_param('local_quicknote_enabled', null, PARAM_INT);
 
         if ($enabled !== null) {
-            set_config('enabled', $enabled, 'local_quicknote_course_' . $courseid);
+            global $DB;
+            $record = $DB->get_record('local_quicknote_course', ['courseid' => $courseid]);
+            if ($record) {
+                $record->enabled = $enabled;
+                $DB->update_record('local_quicknote_course', $record);
+            } else {
+                $record = new \stdClass();
+                $record->courseid = $courseid;
+                $record->enabled = $enabled;
+                $record->module_settings = '';
+                $DB->insert_record('local_quicknote_course', $record);
+            }
         }
     }
 
@@ -62,8 +73,8 @@ class observers {
         // Remove any notes still attached to this course (covers non-enrolled authors).
         $DB->delete_records('local_quicknote_notes', ['courseid' => $courseid]);
 
-        // Remove the synthetic per-course configuration.
-        $DB->delete_records('config_plugins', ['plugin' => 'local_quicknote_course_' . $courseid]);
+        // Remove the per-course configuration.
+        $DB->delete_records('local_quicknote_course', ['courseid' => $courseid]);
     }
 
     /**

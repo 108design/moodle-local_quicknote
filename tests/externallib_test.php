@@ -165,9 +165,32 @@ final class externallib_test extends advanced_testcase {
         $deleteresult = \core_external\external_api::clean_returnvalue(delete_note::execute_returns(), $deleteresult);
         $this->assertTrue($deleteresult['deleted']);
 
-        // Note should be gone.
         $notesresult = get_notes::execute($course->id);
         $notesresult = \core_external\external_api::clean_returnvalue(get_notes::execute_returns(), $notesresult);
         $this->assertCount(0, $notesresult);
+    }
+
+    public function test_disabled_course(): void {
+        global $DB;
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $user = $generator->create_user();
+
+        $generator->enrol_user($user->id, $course->id, 'student');
+        $this->setUser($user);
+
+        // Disable QuickNote for this course.
+        $record = new \stdClass();
+        $record->courseid = $course->id;
+        $record->enabled = 0;
+        $record->module_settings = '';
+        $DB->insert_record('local_quicknote_course', $record);
+
+        // Attempting to use the API should throw an exception.
+        $this->expectException(\moodle_exception::class);
+
+        save_note::execute(0, $course->id, 'This should fail', 'https://example.com');
     }
 }

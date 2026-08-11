@@ -34,7 +34,9 @@ function local_quicknote_coursemodule_standard_elements($formwrapper, $mform) {
 
     if ($cmid > 0) {
         $courseid = $formwrapper->get_course()->id;
-        $settingsjson = get_config('local_quicknote_course_' . $courseid, 'module_settings');
+        global $DB;
+        $record = $DB->get_record('local_quicknote_course', ['courseid' => $courseid]);
+        $settingsjson = $record ? $record->module_settings : null;
         $settings = $settingsjson ? json_decode($settingsjson, true) : [];
         $settings = is_array($settings) ? $settings : [];
         $current = $settings[$cmid] ?? null;
@@ -61,7 +63,9 @@ function local_quicknote_coursemodule_edit_post_actions($data, $course) {
         $cmid = $data->update;
         $courseid = $course->id;
 
-        $settingsjson = get_config('local_quicknote_course_' . $courseid, 'module_settings');
+        global $DB;
+        $record = $DB->get_record('local_quicknote_course', ['courseid' => $courseid]);
+        $settingsjson = $record ? $record->module_settings : null;
         $settings = $settingsjson ? json_decode($settingsjson, true) : [];
         $settings = is_array($settings) ? $settings : [];
 
@@ -71,7 +75,17 @@ function local_quicknote_coursemodule_edit_post_actions($data, $course) {
             $settings[$cmid] = (int) $data->local_quicknote_module;
         }
 
-        set_config('module_settings', json_encode($settings), 'local_quicknote_course_' . $courseid);
+        $json = json_encode($settings);
+        if ($record) {
+            $record->module_settings = $json;
+            $DB->update_record('local_quicknote_course', $record);
+        } else {
+            $record = new \stdClass();
+            $record->courseid = $courseid;
+            $record->enabled = 1;
+            $record->module_settings = $json;
+            $DB->insert_record('local_quicknote_course', $record);
+        }
     }
 
     return $data;

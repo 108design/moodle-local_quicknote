@@ -37,7 +37,7 @@ class observers {
      */
     public static function course_updated(\core\event\course_updated $event) {
         // Skip if Moodle 4.4+ hook already handles persistence.
-        if (class_exists('\core\hook\course\after_form_submission')) {
+        if (class_exists(\core_course\hook\after_form_submission::class)) {
             return;
         }
 

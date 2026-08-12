@@ -1,5 +1,19 @@
 # Moodle plugin: local_quicknote
 
+## 0.9.1 (2026-08-11)
+- **Core & Architecture**:
+  - Refactored course settings storage to use a dedicated database table for improved data management.
+  - Implemented access checks in external API methods (`get_notes`, `save_note`, `delete_note`) to ensure QuickNote is not only disable in the UI.
+  - Removed the default value for the `url` field in `install.xml` to enforce strict required input.
+  - Improved data cleanup by removing associated notes of non-enrolled users.
+- **Bug Fixes**:
+  - Fixed class existence check for the `course_updated` event to use the correct namespace.
+- **Testing & CI**:
+  - Added unit tests for external library API, privacy provider, and disabled course scenarios.
+  - Expanded CI matrix to support PHP 8.1/8.3, updated PostgreSQL and MariaDB versions, and added new Moodle branch targets.
+- **Documentation**:
+  - Updated README to clarify data access, UI visibility, and provide backup/restore information.
+
 ## 0.9.0 (2026-08-05)
 - **Security & Vulnerability Fixes**:
   - Fixed HTML escaping in the sidebar to prevent Cross-Site Scripting (XSS) vulnerabilities.

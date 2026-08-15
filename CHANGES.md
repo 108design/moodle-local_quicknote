@@ -1,5 +1,9 @@
 # Moodle plugin: local_quicknote
 
+## 0.9.2 (2026-08-15)
+- **UI/UX**:
+  - Implemented a "clear search" button in the search input (Sidebar and Notes Center).
+
 ## 0.9.1 (2026-08-11)
 - **Core & Architecture**:
   - Refactored course settings storage to use a dedicated database table for improved data management.

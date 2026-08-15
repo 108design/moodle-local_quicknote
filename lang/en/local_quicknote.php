@@ -66,6 +66,7 @@ $string['privacy:metadata:local_quicknote_notes:timemodified'] = 'The time when 
 $string['privacy:metadata:local_quicknote_notes:url'] = 'The page URL where the note was created.';
 $string['privacy:metadata:local_quicknote_notes:userid'] = 'The user who created the note.';
 $string['search'] = 'Search';
+$string['search:clear'] = 'Clear search';
 $string['search:noresultstext'] = 'No notes found matching your search.';
 $string['search:placeholder'] = 'Search in my notes...';
 $string['select:highlightlabel'] = 'Save selection as note';

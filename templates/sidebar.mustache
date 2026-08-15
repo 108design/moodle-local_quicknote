@@ -89,7 +89,7 @@
             </button>
         </div>
 
-        <div class="local-quicknote__search">
+        <div class="local-quicknote__search position-relative">
             <label class="sr-only" for="local-quicknote-search">{{#str}} search:placeholder, local_quicknote {{/str}}</label>
             <input
                 id="local-quicknote-search"
@@ -98,6 +98,16 @@
                 data-action="search"
                 placeholder="{{#str}} search:placeholder, local_quicknote {{/str}}"
             >
+            <button
+                type="button"
+                class="btn btn-sm btn-link local-quicknote__search-clear"
+                data-action="clear-search"
+                title="{{#str}} search:clear, local_quicknote {{/str}}"
+                aria-label="{{#str}} search:clear, local_quicknote {{/str}}"
+                hidden
+            >
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
         </div>
 
         <div class="local-quicknote__notes" data-region="notes-list">

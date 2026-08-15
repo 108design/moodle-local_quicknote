@@ -35,6 +35,7 @@ define([
         add: '[data-action="add"]',
         search: '[data-action="search"]',
         searchwrapper: '.local-quicknote__search',
+        clearsearch: '[data-action="clear-search"]',
         deletebutton: '[data-action="delete-note"]',
         textarea: '.local-quicknote__textarea',
         note: '.local-quicknote__note',
@@ -833,6 +834,17 @@ define([
                 return;
             }
 
+            var clearSearchBtn = e.target.closest(SELECTORS.clearsearch);
+            if (clearSearchBtn) {
+                var searchInput = state.root.querySelector(SELECTORS.search);
+                if (searchInput) {
+                    searchInput.value = '';
+                    handleSearchInput();
+                    searchInput.focus();
+                }
+                return;
+            }
+
             var copyBtn = e.target.closest('[data-action="copy-note"]');
             if (copyBtn) {
                 handleCopyClick(e, copyBtn);
@@ -895,6 +907,15 @@ define([
 
         var handleSearchInput = function() {
             var term = getSearchTerm();
+            var clearBtn = state.root.querySelector(SELECTORS.clearsearch);
+
+            if (clearBtn) {
+                if (term) {
+                    clearBtn.removeAttribute('hidden');
+                } else {
+                    clearBtn.setAttribute('hidden', 'hidden');
+                }
+            }
 
             if (!state.notes.length) {
                 renderEmptyState();

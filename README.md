@@ -8,15 +8,16 @@ Instead of forcing learners to copy text into external apps, QuickNote keeps the
 
 ## ✨ Features
 
+- **Granular Control:** Advanced settings for site administrators (page exclusions, default policies) and teachers (toggle visibility per course or specific pages).
+- **Default Site Policy**: Administrators can define whether the feature should be enabled or disabled by default for newly configured courses.
 - **Highlight to Note**: Students can select text anywhere inside a course page and use a floating action button to save the selection instantly as a quote.
 - **Scroll to Text Fragments**: Quote references use browser text fragments (`#:~:text=`), allowing QuickNote to return users to the exact original passage and highlight it visually.
 - **Quote and Reflection Separation**: The interface clearly separates the quoted course text from the student's own annotation or reflection.
 - **Native Sidebar Drawer**: Notes are managed inside a right-hand sidebar drawer integrated with the Boost user experience, accessible from a floating action button or navigation entry point.
-- **Auto-save**: Notes and reflections are saved automatically in the background via Moodle AJAX services, reducing the risk of lost work.
+- **Notes Center (view.php):** A dedicated dashboard for students to view all their notes with Global Search, Course Filtering, sorted by last modified date, and equipped with Pagination (configurable display limits) for optimal database performance.
+- **PDF and Markdown Export:** Students can export their compiled notes and reflections directly from the Notes Center to a PDF and Markdown file.
+- **Auto-save & Core Safety**: Notes are saved automatically via Moodle AJAX services. Includes native Backup & Restore support and automatic deletion of notes when a user is unenrolled.
 - **Search and Management**: Students can filter notes in real time and delete notes they no longer need.
-- **Course-Level Control**: Teachers can enable or disable QuickNote for individual courses.
-- **Default Site Policy**: Administrators can define whether the feature should be enabled or disabled by default for newly configured courses.
-- **Student-Centered Study Workflow**: Supports close reading, reflective writing, and quick review without leaving Moodle.
 
 ## ✅ Prerequisites
 

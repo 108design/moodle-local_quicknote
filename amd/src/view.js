@@ -54,6 +54,27 @@ define([], function() {
                 }
                 isKeyboardNav = false; // Reset for next interaction
             });
+
+            var searchInput = document.getElementById('searchterm');
+            var clearSearchBtn = document.getElementById('clearsearch');
+
+            if (searchInput && clearSearchBtn) {
+                searchInput.addEventListener('input', function() {
+                    if (this.value.trim().length > 0) {
+                        clearSearchBtn.removeAttribute('hidden');
+                    } else {
+                        clearSearchBtn.setAttribute('hidden', 'hidden');
+                    }
+                });
+
+                clearSearchBtn.addEventListener('click', function() {
+                    searchInput.value = '';
+                    clearSearchBtn.setAttribute('hidden', 'hidden');
+                    if (searchInput.form) {
+                        searchInput.form.submit();
+                    }
+                });
+            }
         }
     };
 });

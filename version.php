@@ -26,6 +26,6 @@ defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_quicknote';
 $plugin->release = '0.9.1';
-$plugin->version = 2026081100;
+$plugin->version = 2026081500;
 $plugin->requires = 2023042400; // Moodle 4.2.
 $plugin->maturity = MATURITY_BETA;

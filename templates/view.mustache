@@ -71,7 +71,12 @@
                 <div class="col-sm-12 col-md-6 col-lg-6">
                     <div class="input-group">
                         <label class="sr-only" for="searchterm">{{searchnotes}}</label>
-                        <input type="text" name="searchterm" id="searchterm" class="form-control" placeholder="{{searchnotes}}" value="{{searchterm}}">
+                        <div class="local-quicknote-center__search-wrapper">
+                            <input type="text" name="searchterm" id="searchterm" class="form-control local-quicknote-center__search-input" placeholder="{{searchnotes}}" value="{{searchterm}}">
+                            <button type="button" class="btn btn-sm btn-link local-quicknote-center__search-clear" id="clearsearch" title="{{#str}} search:clear, local_quicknote {{/str}}" aria-label="{{#str}} search:clear, local_quicknote {{/str}}" {{^searchterm}}hidden{{/searchterm}}>
+                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                            </button>
+                        </div>
                         <div class="input-group-append">
                             <button class="btn btn-primary" type="submit">
                                 <i class="fa fa-search mr-1" aria-hidden="true"></i>{{search}}

@@ -12,42 +12,40 @@ use context_system;
 use local_quicknote\local\screenshot_manager;
 
 /**
- * Delete one owned private note and its screenshots.
+ * Delete one screenshot attached to an owned note.
  *
  * @package     local_quicknote
- * @copyright   2026 Matheus Mathias
- * @copyright   2026 Andreas Giesen (downstream changes)
+ * @copyright   2026 Andreas Giesen
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class delete_note extends \core_external\external_api {
+class delete_screenshot extends \core_external\external_api {
     public static function execute_parameters(): \core_external\external_function_parameters {
         return new \core_external\external_function_parameters([
-            'noteid' => new \core_external\external_value(PARAM_INT, 'Note id to delete.'),
+            'noteid' => new \core_external\external_value(PARAM_INT, 'Owning note id.'),
+            'fileid' => new \core_external\external_value(PARAM_INT, 'Stored file id.'),
         ]);
     }
 
-    public static function execute(int $noteid): array {
+    public static function execute(int $noteid, int $fileid): array {
         global $DB, $USER;
-        $params = self::validate_parameters(self::execute_parameters(), ['noteid' => $noteid]);
+        $params = self::validate_parameters(self::execute_parameters(), ['noteid' => $noteid, 'fileid' => $fileid]);
 
         require_login();
         $context = context_system::instance();
         self::validate_context($context);
         require_capability('local/quicknote:use', $context);
-
-        $note = $DB->get_record('local_quicknote_notes', [
+        $DB->get_record('local_quicknote_notes', [
             'id' => $params['noteid'],
             'userid' => $USER->id,
-        ], '*', MUST_EXIST);
-        screenshot_manager::delete_for_note((int) $note->id);
-        $DB->delete_records('local_quicknote_notes', ['id' => $note->id]);
-        return ['noteid' => (int) $note->id, 'deleted' => true];
+        ], 'id', MUST_EXIST);
+
+        return ['fileid' => $params['fileid'], 'deleted' => screenshot_manager::delete_file($params['fileid'], $params['noteid'])];
     }
 
     public static function execute_returns(): \core_external\external_single_structure {
         return new \core_external\external_single_structure([
-            'noteid' => new \core_external\external_value(PARAM_INT, 'Deleted note id.'),
-            'deleted' => new \core_external\external_value(PARAM_BOOL, 'Whether the note was deleted.'),
+            'fileid' => new \core_external\external_value(PARAM_INT, 'Deleted file id.'),
+            'deleted' => new \core_external\external_value(PARAM_BOOL, 'Whether the file was deleted.'),
         ]);
     }
 }

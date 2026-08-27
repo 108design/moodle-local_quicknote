@@ -16,6 +16,7 @@
 
     @template local_quicknote/sidebar
     @copyright 2026 Matheus Mathias
+    @copyright 2026 Andreas Giesen (downstream changes)
     @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 
     Sidebar template for local_quicknote.
@@ -36,6 +37,8 @@
     id="local-quicknote-root"
     class="local-quicknote {{positionclass}}"
     data-courseid="{{courseid}}"
+    data-pageurl="{{pageurl}}"
+    data-pagetitle="{{pagetitle}}"
     data-placeholder="{{placeholder}}"
     data-emptytext="{{emptytext}}"
     data-savingtext="{{savingtext}}"
@@ -46,6 +49,9 @@
     data-highlightlabel="{{highlightlabel}}"
     data-deleteconfirm="{{deleteconfirm}}"
     data-noresultstext="{{noresultstext}}"
+    data-globalbadge="{{globalbadge}}"
+    data-uploadingtext="{{uploadingtext}}"
+    data-deleteimagelabel="{{deleteimagelabel}}"
 >
     <button
         type="button"
@@ -129,6 +135,20 @@
                     </button>
                 </div>
 
+                <div class="local-quicknote__global-control custom-control custom-switch">
+                    <input
+                        type="checkbox"
+                        class="custom-control-input form-check-input"
+                        data-action="toggle-global"
+                    >
+                    <label class="custom-control-label form-check-label" data-region="global-label">
+                        {{globallabel}}
+                    </label>
+                    <span class="badge badge-info bg-info text-white ml-2" data-region="global-badge" hidden>
+                        {{globalbadge}}
+                    </span>
+                </div>
+
                 <div class="local-quicknote__quote-wrapper" data-region="note-quote-wrapper" hidden>
                     <blockquote class="local-quicknote__quote" data-region="note-quote"></blockquote>
                     <a
@@ -154,6 +174,9 @@
                         <i class="fa-regular fa-copy" aria-hidden="true"></i>
                     </button>
                 </div>
+
+                <div class="local-quicknote__screenshots" data-region="screenshots"></div>
+                <p class="local-quicknote__paste-hint">{{pastehint}}</p>
 
             </article>
         </template>

@@ -1,5 +1,18 @@
 # Moodle plugin: local_quicknote
 
+## 0.10.0-108design.2 (2026-08-26)
+- Aligned the Markdown/PDF export controls with the filter and search row and reduced them to accessible 30 px icon buttons at the right edge.
+
+## 0.10.0-108design.1 (2026-08-26)
+- **Downstream fork** by Andreas Giesen; upstream GPLv3-or-later licensing and original authorship are retained.
+- Added the system capability `local/quicknote:use`. It is intentionally not granted to a standard role; site administrators have it automatically and selected users can receive it through an explicitly assigned system role.
+- Made the existing floating QuickNote drawer available on ordinary site front page, course and administration pages for authorised users.
+- Notes are now page-specific through a stable same-site page identity. Current-page notes are shown together with the user's own global notes.
+- Added a per-note “global” switch.
+- Added private screenshot attachments pasted into the note textarea with Ctrl+V, including previews and deletion. Images use Moodle's File API and owner-checked delivery.
+- Added German strings, privacy metadata/file export and attachment cleanup.
+- Kept the required `pagehash` field free of an empty XMLDB default so clean installations and legacy upgrades do not emit a schema warning.
+
 ## 0.9.2 (2026-08-15)
 - **UI/UX**:
   - Implemented a "clear search" button in the search input (Sidebar and Notes Center).

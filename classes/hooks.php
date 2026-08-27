@@ -19,6 +19,7 @@
  *
  * @package     local_quicknote
  * @copyright   2026 Matheus Mathias
+ * @copyright   2026 Andreas Giesen (downstream changes)
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -32,75 +33,6 @@ use core\hook\output\before_standard_top_of_body_html_generation;
  * @package    local_quicknote
  */
 class hooks {
-    /**
-     * Adds QuickNote settings to the course/module edit form using Hook API.
-     *
-     * @param \core_course\hook\after_form_definition $hook The hook object.
-     */
-    public static function course_edit_form(\core_course\hook\after_form_definition $hook) {
-        $mform = method_exists($hook, 'get_mform') ? $hook->get_mform() : $hook->mform;
-
-        $cmid = optional_param('update', 0, PARAM_INT);
-
-        if ($cmid > 0) {
-            // Module forms are handled via coursemodule_standard_elements in lib.php.
-            return;
-        }
-
-        $mform->addElement('header', 'local_quicknote_header', get_string('pluginname', 'local_quicknote'));
-
-        // Course edit form — per-course on/off.
-        $courseid = optional_param('id', 0, PARAM_INT);
-
-        $globaldefault = get_config('local_quicknote', 'default_enabled');
-        $enabled = ($globaldefault === false || $globaldefault === null) ? 1 : $globaldefault;
-
-        if ($courseid > 0) {
-            global $DB;
-            $record = $DB->get_record('local_quicknote_course', ['courseid' => $courseid], 'enabled');
-            $savedvalue = $record ? $record->enabled : false;
-            if ($savedvalue !== false && $savedvalue !== null) {
-                $enabled = $savedvalue;
-            }
-        }
-
-        $mform->addElement('advcheckbox', 'local_quicknote_enabled', get_string('config:active_course', 'local_quicknote'));
-        $mform->setDefault('local_quicknote_enabled', (int) $enabled);
-    }
-
-    /**
-     * Persists QuickNote settings using Hook API.
-     *
-     * @param \core_course\hook\after_form_submission $hook The hook object.
-     */
-    public static function course_edit_submission(\core_course\hook\after_form_submission $hook) {
-        $cmid = optional_param('update', 0, PARAM_INT);
-
-        if ($cmid > 0) {
-            // Module forms are handled via coursemodule_edit_post_actions in lib.php.
-            return;
-        }
-
-        // Course form — save per-course on/off.
-        $courseid = optional_param('id', 0, PARAM_INT);
-        $enabled = optional_param('local_quicknote_enabled', 0, PARAM_INT);
-
-        if ($courseid > 0) {
-            global $DB;
-            $record = $DB->get_record('local_quicknote_course', ['courseid' => $courseid]);
-            if ($record) {
-                $record->enabled = $enabled;
-                $DB->update_record('local_quicknote_course', $record);
-            } else {
-                $record = new \stdClass();
-                $record->courseid = $courseid;
-                $record->enabled = $enabled;
-                $record->module_settings = '';
-                $DB->insert_record('local_quicknote_course', $record);
-            }
-        }
-    }
-
     /**
      * Injects the QuickNote UI in the standard top of body HTML.
      *
@@ -119,7 +51,7 @@ class hooks {
      * @return string
      */
     public static function get_top_of_body_html(): string {
-        global $OUTPUT, $PAGE, $USER;
+        global $OUTPUT, $PAGE;
 
         if (during_initial_install() || (defined('CLI_SCRIPT') && CLI_SCRIPT)) {
             return '';
@@ -129,15 +61,10 @@ class hooks {
             return '';
         }
 
-        if (empty($PAGE->course->id) || $PAGE->course->id === SITEID) {
+        $systemcontext = \context_system::instance();
+        if (!has_capability('local/quicknote:use', $systemcontext)) {
             return '';
         }
-
-        if (empty($PAGE->context->contextlevel) || !in_array($PAGE->context->contextlevel, [CONTEXT_COURSE, CONTEXT_MODULE])) {
-            return '';
-        }
-
-        $course = get_course($PAGE->course->id);
 
         if ($PAGE->pagelayout === 'embedded') {
             // In H5P Core, inserting JS worked, but it didn't in mod_hvp and SCORM.
@@ -152,62 +79,19 @@ class hooks {
             return '';
         }
 
-        $context = \context_course::instance($course->id, IGNORE_MISSING);
-
-        if (!$context) {
-            return '';
-        }
-
-        if (!is_enrolled($context) && !has_capability('moodle/course:view', $context)) {
-            return '';
-        }
-
-        if (!self::is_enabled_for_course($course)) {
-            return '';
-        }
-
-        // Check per-module override.
-        $skipatterncheck = false;
-        if ($PAGE->cm) {
-            global $DB;
-            $record = $DB->get_record('local_quicknote_course', ['courseid' => $course->id], 'module_settings');
-            $modulesettings = $record ? $record->module_settings : null;
-            if ($modulesettings) {
-                $modulesettings = json_decode($modulesettings, true);
-                if (!is_array($modulesettings)) {
-                    $modulesettings = [];
-                }
-                if (isset($modulesettings[$PAGE->cm->id])) {
-                    $modulevalue = $modulesettings[$PAGE->cm->id];
-                    if ($modulevalue === 0) {
-                        return '';
-                    }
-                    // If explicitly enabled, skip site-wide pattern check.
-                    $skipatterncheck = true;
-                }
-            }
-        }
-
-        // Check site-wide page type patterns (unless overridden by an explicit per-module enable).
-        if (empty($skipatterncheck)) {
-            $disabledpatterns = get_config('local_quicknote', 'disabled_pagetypes');
-            if (!empty($disabledpatterns)) {
-                $patterns = explode("\n", $disabledpatterns);
-                $pagetype = $PAGE->pagetype;
-                foreach ($patterns as $pattern) {
-                    $pattern = trim($pattern);
-                    if ($pattern === '') {
-                        continue;
-                    }
-                    if (fnmatch($pattern, $pagetype)) {
-                        return '';
-                    }
-                }
-            }
+        $courseid = !empty($PAGE->course->id) && (int) $PAGE->course->id !== SITEID
+            ? (int) $PAGE->course->id
+            : 0;
+        $pageurl = $PAGE->url->out(false);
+        $pagetitle = trim((string) ($PAGE->title ?: $PAGE->heading));
+        if ($pagetitle === '') {
+            $pagetitle = get_string('unknownpage', 'local_quicknote');
         }
 
         $PAGE->requires->js_call_amd('local_quicknote/notes', 'init', [[
-            'courseid' => (int) $course->id,
+            'courseid' => $courseid,
+            'pageurl' => $pageurl,
+            'pagetitle' => $pagetitle,
         ]]);
 
         $position = get_config('local_quicknote', 'position');
@@ -217,7 +101,9 @@ class hooks {
         $positionclass = 'local-quicknote--' . $position;
 
         $html = $OUTPUT->render_from_template('local_quicknote/sidebar', [
-            'courseid' => (int) $course->id,
+            'courseid' => $courseid,
+            'pageurl' => $pageurl,
+            'pagetitle' => $pagetitle,
             'positionclass' => $positionclass,
             'hasquote' => false,
             'quotetext' => '',
@@ -235,27 +121,14 @@ class hooks {
             'deleteconfirm' => get_string('note:delete_confirm', 'local_quicknote'),
             'noresultstext' => get_string('search:noresultstext', 'local_quicknote'),
             'highlightlabel' => get_string('select:highlightlabel', 'local_quicknote'),
+            'globallabel' => get_string('note:isglobal', 'local_quicknote'),
+            'globalbadge' => get_string('note:globalbadge', 'local_quicknote'),
+            'pastehint' => get_string('screenshot:pastehint', 'local_quicknote'),
+            'uploadingtext' => get_string('screenshot:uploading', 'local_quicknote'),
+            'deleteimagelabel' => get_string('screenshot:delete', 'local_quicknote'),
         ]);
 
         return $html;
     }
 
-    /**
-     * Checks whether QuickNote is enabled for the current course.
-     *
-     * @param \stdClass $course The course object.
-     * @return bool
-     */
-    public static function is_enabled_for_course(\stdClass $course): bool {
-        global $DB;
-        $record = $DB->get_record('local_quicknote_course', ['courseid' => $course->id], 'enabled');
-        $enabled = $record ? $record->enabled : false;
-
-        if ($enabled === false || $enabled === null || $enabled === '') {
-            // Return the default setting defined by the administrator in Site Administration.
-            return (bool) get_config('local_quicknote', 'default_enabled');
-        }
-
-        return (string) $enabled !== '0';
-    }
 }

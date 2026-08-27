@@ -19,6 +19,7 @@
  *
  * @package     local_quicknote
  * @copyright   2026 Matheus Mathias
+ * @copyright   2026 Andreas Giesen (downstream changes)
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -31,37 +32,6 @@ namespace local_quicknote;
  */
 class observers {
     /**
-     * Save QuickNote configuration when the course is updated.
-     *
-     * @param \core\event\course_updated $event The event triggered.
-     */
-    public static function course_updated(\core\event\course_updated $event) {
-        // Skip if Moodle 4.4+ hook already handles persistence.
-        if (class_exists(\core_course\hook\after_form_submission::class)) {
-            return;
-        }
-
-        $courseid = $event->objectid;
-
-        $enabled = optional_param('local_quicknote_enabled', null, PARAM_INT);
-
-        if ($enabled !== null) {
-            global $DB;
-            $record = $DB->get_record('local_quicknote_course', ['courseid' => $courseid]);
-            if ($record) {
-                $record->enabled = $enabled;
-                $DB->update_record('local_quicknote_course', $record);
-            } else {
-                $record = new \stdClass();
-                $record->courseid = $courseid;
-                $record->enabled = $enabled;
-                $record->module_settings = '';
-                $DB->insert_record('local_quicknote_course', $record);
-            }
-        }
-    }
-
-    /**
      * Delete the per-course synthetic config when a course is deleted.
      *
      * @param \core\event\course_deleted $event The event triggered.
@@ -71,7 +41,7 @@ class observers {
         $courseid = $event->objectid;
 
         // Remove any notes still attached to this course (covers non-enrolled authors).
-        $DB->delete_records('local_quicknote_notes', ['courseid' => $courseid]);
+        self::delete_notes(['courseid' => $courseid]);
 
         // Remove the per-course configuration.
         $DB->delete_records('local_quicknote_course', ['courseid' => $courseid]);
@@ -88,7 +58,7 @@ class observers {
         $userid = $event->relateduserid;
         $courseid = $event->courseid;
 
-        $DB->delete_records('local_quicknote_notes', [
+        self::delete_notes([
             'userid' => $userid,
             'courseid' => $courseid,
         ]);
@@ -104,8 +74,19 @@ class observers {
 
         $userid = $event->objectid;
 
-        $DB->delete_records('local_quicknote_notes', [
+        self::delete_notes([
             'userid' => $userid,
         ]);
+    }
+
+    /** Delete matching notes together with their private screenshot areas. */
+    private static function delete_notes(array $conditions): void {
+        global $DB;
+
+        $notes = $DB->get_records('local_quicknote_notes', $conditions, '', 'id');
+        foreach ($notes as $note) {
+            \local_quicknote\local\screenshot_manager::delete_for_note((int) $note->id);
+        }
+        $DB->delete_records('local_quicknote_notes', $conditions);
     }
 }

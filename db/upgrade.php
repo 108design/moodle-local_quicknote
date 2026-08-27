@@ -20,6 +20,7 @@
  * @package     local_quicknote
  * @category    upgrade
  * @copyright   2026 Matheus Mathias
+ * @copyright   2026 Andreas Giesen (downstream changes)
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -106,6 +107,50 @@ function xmldb_local_quicknote_upgrade($oldversion) {
 
         // Quicknote savepoint reached.
         upgrade_plugin_savepoint(true, 2026080901, 'local', 'quicknote');
+    }
+
+    if ($oldversion < 2026082600) {
+        $table = new xmldb_table('local_quicknote_notes');
+
+        $urlfield = new xmldb_field('url', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null, 'quoteurl');
+        $dbman->change_field_type($table, $urlfield);
+        $dbman->change_field_notnull($table, $urlfield);
+
+        $pagehashfield = new xmldb_field(
+            'pagehash', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, null, 'url'
+        );
+        if (!$dbman->field_exists($table, $pagehashfield)) {
+            $dbman->add_field($table, $pagehashfield);
+        }
+
+        $pagetitlefield = new xmldb_field(
+            'pagetitle', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'pagehash'
+        );
+        if (!$dbman->field_exists($table, $pagetitlefield)) {
+            $dbman->add_field($table, $pagetitlefield);
+        }
+
+        $isglobalfield = new xmldb_field(
+            'isglobal', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'pagetitle'
+        );
+        if (!$dbman->field_exists($table, $isglobalfield)) {
+            $dbman->add_field($table, $isglobalfield);
+        }
+
+        // Existing notes become page-specific based on their saved source URL.
+        $rs = $DB->get_recordset('local_quicknote_notes', ['pagehash' => ''], '', 'id,url');
+        foreach ($rs as $note) {
+            $pagehash = \local_quicknote\local\page_identity::legacy_hash((string) $note->url);
+            $DB->set_field('local_quicknote_notes', 'pagehash', $pagehash, ['id' => $note->id]);
+        }
+        $rs->close();
+
+        $index = new xmldb_index('userpageglobal_ix', XMLDB_INDEX_NOTUNIQUE, ['userid', 'pagehash', 'isglobal']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026082600, 'local', 'quicknote');
     }
 
     return true;

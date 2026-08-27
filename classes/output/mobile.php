@@ -21,6 +21,7 @@ namespace local_quicknote\output;
  *
  * @package     local_quicknote
  * @copyright   2026 Matheus Mathias
+ * @copyright   2026 Andreas Giesen (downstream changes)
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class mobile {
@@ -32,6 +33,8 @@ class mobile {
      */
     public static function mobile_course_view($args) {
         global $OUTPUT;
+
+        require_capability('local/quicknote:use', \context_system::instance());
 
         $courseid = $args['courseid'] ?? 0;
 

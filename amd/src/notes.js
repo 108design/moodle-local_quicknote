@@ -16,6 +16,7 @@
 /**
  * @module      local_quicknote/notes
  * @copyright   2026 Matheus Mathias
+ * @copyright   2026 Andreas Giesen (downstream changes)
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -45,7 +46,11 @@ define([
         location: '[data-region="note-location"]',
         quotewrapper: '[data-region="note-quote-wrapper"]',
         quote: '[data-region="note-quote"]',
-        quotelink: '[data-region="note-quote-link"]'
+        quotelink: '[data-region="note-quote-link"]',
+        globaltoggle: '[data-action="toggle-global"]',
+        globalbadge: '[data-region="global-badge"]',
+        screenshots: '[data-region="screenshots"]',
+        deletescreenshot: '[data-action="delete-screenshot"]'
     };
 
     var SAVE_DELAY = 500;
@@ -84,7 +89,11 @@ define([
             id: 0,
             clientid: 'draft-' + Date.now() + '-' + Math.random().toString(16).slice(2),
             content: '',
-            url: window.location.href,
+            url: state.pageurl,
+            pagetitle: state.pagetitle,
+            courseid: state.courseid,
+            isglobal: false,
+            screenshots: [],
             timecreated: now,
             timemodified: now,
             status: ''
@@ -106,6 +115,9 @@ define([
             quote: note.quote || '',
             quoteurl: note.quoteurl || '',
             url: note.url || '',
+            pagetitle: note.pagetitle || '',
+            isglobal: !!note.isglobal,
+            screenshots: note.screenshots || [],
             status: note.status || ''
         });
 
@@ -224,6 +236,64 @@ define([
         }
     };
 
+    var setNoteGlobal = function(noteEl, note) {
+        var toggle = noteEl.querySelector(SELECTORS.globaltoggle);
+        var badge = noteEl.querySelector(SELECTORS.globalbadge);
+        var label = noteEl.querySelector('[data-region="global-label"]');
+        var inputid = 'local-quicknote-global-' + note.clientid;
+
+        if (toggle) {
+            toggle.id = inputid;
+            toggle.checked = !!note.isglobal;
+            toggle.setAttribute('data-note-key', note.clientid);
+        }
+        if (label) {
+            label.setAttribute('for', inputid);
+        }
+        if (badge) {
+            if (note.isglobal) {
+                badge.removeAttribute('hidden');
+            } else {
+                badge.setAttribute('hidden', 'hidden');
+            }
+        }
+    };
+
+    var renderScreenshots = function(noteEl, note) {
+        var container = noteEl.querySelector(SELECTORS.screenshots);
+        if (!container) {
+            return;
+        }
+        container.innerHTML = '';
+        (note.screenshots || []).forEach(function(screenshot) {
+            var figure = document.createElement('figure');
+            figure.className = 'local-quicknote__screenshot';
+
+            var link = document.createElement('a');
+            link.href = screenshot.url;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            var image = document.createElement('img');
+            image.src = screenshot.url;
+            image.alt = screenshot.filename;
+            image.loading = 'lazy';
+            link.appendChild(image);
+
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-sm btn-danger local-quicknote__screenshot-delete';
+            remove.setAttribute('data-action', 'delete-screenshot');
+            remove.setAttribute('data-fileid', screenshot.id);
+            remove.setAttribute('title', state.strings.deleteimagelabel);
+            remove.setAttribute('aria-label', state.strings.deleteimagelabel);
+            remove.textContent = '×';
+
+            figure.appendChild(link);
+            figure.appendChild(remove);
+            container.appendChild(figure);
+        });
+    };
+
     var updateNoteElement = function(note, noteEl, preservecontent) {
         var textarea = noteEl.querySelector(SELECTORS.textarea);
         var currentcontent = preservecontent && textarea ? textarea.value : note.content;
@@ -254,6 +324,8 @@ define([
         setNoteStatus(noteEl, note.status, note.timemodified);
         setNoteQuote(noteEl, note);
         setNoteLocation(noteEl, note.url, note.hasquote);
+        setNoteGlobal(noteEl, note);
+        renderScreenshots(noteEl, note);
 
         var copyBtn = noteEl.querySelector('[data-action="copy-note"]');
         if (copyBtn) {
@@ -288,7 +360,8 @@ define([
         }
 
         return String(note.content || '').toLowerCase().indexOf(term) !== -1 ||
-            String(note.quote || '').toLowerCase().indexOf(term) !== -1;
+            String(note.quote || '').toLowerCase().indexOf(term) !== -1 ||
+            String(note.pagetitle || '').toLowerCase().indexOf(term) !== -1;
     };
 
     var applyFilter = function() {
@@ -487,15 +560,17 @@ define([
             methodname: 'local_quicknote_save_note',
             args: {
                 id: note.id || 0,
-                courseid: state.courseid,
+                courseid: note.courseid || 0,
                 content: note.content,
-                url: note.url || window.location.href,
+                url: note.url || state.pageurl,
+                pagetitle: note.pagetitle || state.pagetitle,
+                isglobal: !!note.isglobal,
                 quote: note.quote || '',
                 quoteurl: note.quoteurl || ''
             }
         }])[0];
 
-        request.then(function(response) {
+        return request.then(function(response) {
             var savednote = normaliseNote(response);
             var currentnoteEl = getNoteElementByKey(note.clientid);
 
@@ -506,6 +581,9 @@ define([
             note.courseid = savednote.courseid;
             note.userid = savednote.userid;
             note.url = savednote.url;
+            note.pagetitle = savednote.pagetitle;
+            note.isglobal = savednote.isglobal;
+            note.screenshots = savednote.screenshots;
             note.quote = savednote.quote;
             note.quoteurl = savednote.quoteurl;
             note.hasquote = savednote.hasquote;
@@ -518,6 +596,8 @@ define([
                 setNoteStatus(currentnoteEl, note.status, note.timemodified);
                 setNoteQuote(currentnoteEl, note);
                 setNoteLocation(currentnoteEl, note.url, note.hasquote);
+                setNoteGlobal(currentnoteEl, note);
+                renderScreenshots(currentnoteEl, note);
 
                 setTimeout(function() {
                     note.status = '';
@@ -533,6 +613,7 @@ define([
             }
 
             Notification.exception(error);
+            throw error;
         });
     };
 
@@ -545,7 +626,9 @@ define([
 
         state.timers[note.clientid] = window.setTimeout(function() {
             delete state.timers[note.clientid];
-            saveNote(note);
+            saveNote(note).catch(function() {
+                // saveNote already presents the error and updates the note status.
+            });
         }, SAVE_DELAY);
     };
 
@@ -553,7 +636,8 @@ define([
         var request = Ajax.call([{
             methodname: 'local_quicknote_get_notes',
             args: {
-                courseid: state.courseid
+                courseid: state.courseid,
+                pageurl: state.pageurl
             }
         }])[0];
 
@@ -613,10 +697,11 @@ define([
 
     var createHighlightNote = function(text) {
         var note = createDraftNote();
-        var quoteurl = window.location.href + '#:~:text=' + encodeURIComponent(text);
+        var quoteurl = state.pageurl + '#:~:text=' + encodeURIComponent(text);
 
         note.content = '';
-        note.url = window.location.href;
+        note.url = state.pageurl;
+        note.pagetitle = state.pagetitle;
         note.quote = formatQuotedNote(text);
         note.quoteurl = quoteurl;
         note.timemodified = Math.floor(Date.now() / 1000);
@@ -631,7 +716,76 @@ define([
             textarea.focus();
         }
 
-        saveNote(note);
+        saveNote(note).catch(function() {
+            // saveNote already presents the error and updates the note status.
+        });
+    };
+
+    var fileToBase64 = function(file) {
+        return new Promise(function(resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function() {
+                var result = String(reader.result || '');
+                var separator = result.indexOf(',');
+                resolve(separator === -1 ? result : result.substring(separator + 1));
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
+    var uploadScreenshot = function(note, file) {
+        var noteEl = getNoteElementByKey(note.clientid);
+        if (state.timers[note.clientid]) {
+            window.clearTimeout(state.timers[note.clientid]);
+            delete state.timers[note.clientid];
+        }
+
+        var ensureSaved = note.id ? Promise.resolve() : saveNote(note);
+        return ensureSaved.then(function() {
+            if (noteEl) {
+                setNoteStatus(noteEl, state.strings.uploadingtext, note.timemodified);
+            }
+            return fileToBase64(file);
+        }).then(function(data) {
+            return Ajax.call([{
+                methodname: 'local_quicknote_upload_screenshot',
+                args: {
+                    noteid: note.id,
+                    filename: file.name || 'screenshot.png',
+                    mimetype: file.type,
+                    data: data
+                }
+            }])[0];
+        }).then(function(screenshot) {
+            note.screenshots = note.screenshots || [];
+            note.screenshots.push(screenshot);
+            if (noteEl) {
+                renderScreenshots(noteEl, note);
+                setNoteStatus(noteEl, state.strings.savedtext, note.timemodified);
+            }
+            return screenshot;
+        }).catch(function(error) {
+            if (noteEl) {
+                setNoteStatus(noteEl, state.strings.errortext, note.timemodified);
+            }
+            Notification.exception(error);
+        });
+    };
+
+    var deleteScreenshot = function(note, fileid, noteEl) {
+        Ajax.call([{
+            methodname: 'local_quicknote_delete_screenshot',
+            args: {noteid: note.id, fileid: fileid}
+        }])[0].then(function(response) {
+            if (response.deleted) {
+                note.screenshots = (note.screenshots || []).filter(function(screenshot) {
+                    return Number(screenshot.id) !== Number(fileid);
+                });
+                renderScreenshots(noteEl, note);
+            }
+            return response;
+        }).catch(Notification.exception);
     };
 
     var bindEvents = function() {
@@ -851,6 +1005,21 @@ define([
                 return;
             }
 
+            var deleteScreenshotBtn = e.target.closest(SELECTORS.deletescreenshot);
+            if (deleteScreenshotBtn) {
+                var screenshotNoteEl = deleteScreenshotBtn.closest(SELECTORS.note);
+                var screenshotNote = screenshotNoteEl ?
+                    getNoteByKey(screenshotNoteEl.getAttribute('data-note-key')) : null;
+                if (screenshotNote && screenshotNote.id) {
+                    deleteScreenshot(
+                        screenshotNote,
+                        Number(deleteScreenshotBtn.getAttribute('data-fileid')),
+                        screenshotNoteEl
+                    );
+                }
+                return;
+            }
+
             var deleteBtn = e.target.closest(SELECTORS.deletebutton);
             if (deleteBtn) {
                 handleDeleteClick(deleteBtn);
@@ -873,7 +1042,6 @@ define([
                 }
 
                 note.content = textarea.value;
-                note.url = window.location.href;
                 note.timemodified = Math.floor(Date.now() / 1000);
 
                 var noteEl = textarea.closest(SELECTORS.note);
@@ -896,6 +1064,58 @@ define([
             if (search) {
                 handleSearchInput();
             }
+        });
+
+        state.root.addEventListener('change', function(e) {
+            var globalToggle = e.target.closest(SELECTORS.globaltoggle);
+            if (!globalToggle) {
+                return;
+            }
+
+            var note = getNoteByKey(globalToggle.getAttribute('data-note-key'));
+            if (!note) {
+                return;
+            }
+            note.isglobal = globalToggle.checked;
+            if (!note.isglobal) {
+                note.url = state.pageurl;
+                note.pagetitle = state.pagetitle;
+                note.courseid = state.courseid;
+            }
+            note.timemodified = Math.floor(Date.now() / 1000);
+            setNoteGlobal(globalToggle.closest(SELECTORS.note), note);
+            scheduleSave(note);
+        });
+
+        state.root.addEventListener('paste', function(e) {
+            var textarea = e.target.closest(SELECTORS.textarea);
+            if (!textarea || !e.clipboardData || !e.clipboardData.items) {
+                return;
+            }
+
+            var images = [];
+            Array.prototype.forEach.call(e.clipboardData.items, function(item) {
+                if (item.kind === 'file' && /^image\/(png|jpeg|webp|gif)$/i.test(item.type)) {
+                    var file = item.getAsFile();
+                    if (file) {
+                        images.push(file);
+                    }
+                }
+            });
+            if (!images.length) {
+                return;
+            }
+
+            e.preventDefault();
+            var note = getNoteByKey(textarea.getAttribute('data-note-key'));
+            if (!note) {
+                return;
+            }
+            images.reduce(function(chain, file) {
+                return chain.then(function() {
+                    return uploadScreenshot(note, file);
+                });
+            }, Promise.resolve());
         });
 
         state.root.addEventListener('keyup', function(e) {
@@ -962,6 +1182,8 @@ define([
             state = {
                 root: rootEl,
                 courseid: Number(config.courseid || rootEl.getAttribute('data-courseid')),
+                pageurl: config.pageurl || rootEl.getAttribute('data-pageurl') || window.location.href.split('#')[0],
+                pagetitle: config.pagetitle || rootEl.getAttribute('data-pagetitle') || document.title,
                 notes: [],
                 timers: {},
                 strings: {
@@ -974,7 +1196,10 @@ define([
                     locationlabel: rootEl.getAttribute('data-locationlabel'),
                     highlightlabel: rootEl.getAttribute('data-highlightlabel'),
                     deleteconfirm: rootEl.getAttribute('data-deleteconfirm'),
-                    noresultstext: rootEl.getAttribute('data-noresultstext')
+                    noresultstext: rootEl.getAttribute('data-noresultstext'),
+                    globalbadge: rootEl.getAttribute('data-globalbadge'),
+                    uploadingtext: rootEl.getAttribute('data-uploadingtext'),
+                    deleteimagelabel: rootEl.getAttribute('data-deleteimagelabel')
                 }
             };
 

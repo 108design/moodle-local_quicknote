@@ -19,6 +19,7 @@
  *
  * @package     local_quicknote
  * @copyright   2026 Matheus Mathias
+ * @copyright   2026 Andreas Giesen (downstream changes)
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -27,6 +28,7 @@ require_once('../../config.php');
 // Require login and set context.
 require_login();
 $context = context_system::instance();
+require_capability('local/quicknote:use', $context);
 
 // Get optional parameters.
 $coursefilter = optional_param('coursefilter', 0, PARAM_INT);
@@ -84,7 +86,7 @@ $hasnotestosearch = $DB->count_records_sql($countsql, $countparams) > 0;
 
 // Build SQL query for notes.
 $sqlfrom = "FROM {local_quicknote_notes} qn
-        JOIN {course} c ON c.id = qn.courseid
+        LEFT JOIN {course} c ON c.id = qn.courseid
         WHERE qn.userid = :userid";
 $params = ['userid' => $USER->id];
 
@@ -107,7 +109,8 @@ $sqlorder = " ORDER BY qn.timemodified DESC";
 $sqlcount = "SELECT COUNT(qn.id) " . $sqlfrom;
 $totalcount = $DB->count_records_sql($sqlcount, $params);
 
-$sql = "SELECT qn.id, qn.content, qn.url, qn.quote, qn.quoteurl, qn.timemodified, c.fullname as coursefullname, c.id as courseid
+$sql = "SELECT qn.id, qn.content, qn.url, qn.quote, qn.quoteurl, qn.timemodified,
+               qn.pagehash, qn.pagetitle, qn.isglobal, qn.courseid, c.fullname AS coursefullname
         " . $sqlfrom . $sqlorder;
 
 // Execute query.
@@ -116,6 +119,16 @@ if ($export === 'pdf' || $export === 'md' || $perpage === 0) {
 } else {
     $noterecords = $DB->get_records_sql($sql, $params, $page * $perpage, $perpage);
 }
+
+$recordlabel = static function(stdClass $record): string {
+    if (!empty($record->pagetitle)) {
+        return format_string($record->pagetitle, true, ['context' => context_system::instance()]);
+    }
+    if (!empty($record->courseid) && !empty($record->coursefullname)) {
+        return format_string($record->coursefullname, true, ['context' => context_course::instance($record->courseid)]);
+    }
+    return get_string('unknownpage', 'local_quicknote');
+};
 
 if ($export === 'pdf') {
     require_once($CFG->libdir . '/pdflib.php');
@@ -132,29 +145,27 @@ if ($export === 'pdf') {
     if (empty($noterecords)) {
         $pdf->writeHTML('<p>' . get_string('note:empty', 'local_quicknote') . '</p>', true, false, true, false, '');
     } else {
-        $currentcourseid = null;
+        $currentgroup = null;
 
         foreach ($noterecords as $record) {
-            if (empty(trim($record->content)) && empty(trim($record->quote))) {
+            $screenshots = \local_quicknote\local\screenshot_manager::get_for_note((int) $record->id);
+            if (empty(trim($record->content)) && empty(trim($record->quote)) && empty($screenshots)) {
                 continue;
             }
 
             $html = '';
 
-            if ($currentcourseid !== $record->courseid) {
-                $coursefullname = format_string(
-                    $record->coursefullname,
-                    true,
-                    [
-                        'context' => context_course::instance($record->courseid),
-                    ]
-                );
+            $group = !empty($record->isglobal) ? 'global' : (string) $record->pagehash;
+            if ($currentgroup !== $group) {
+                $label = !empty($record->isglobal)
+                    ? get_string('note:globalbadge', 'local_quicknote')
+                    : $recordlabel($record);
 
                 $html .= '<h3 style="color: #0056b3; margin-top: 25px; border-bottom: 1px solid #eee;">'
-                    . $coursefullname
+                    . $label
                     . '</h3>';
 
-                $currentcourseid = $record->courseid;
+                $currentgroup = $group;
             }
 
             $timeupdated = userdate($record->timemodified, get_string('strftimedatetimeshort', 'langconfig'));
@@ -182,7 +193,13 @@ if ($export === 'pdf') {
                         . '</a></small></p>';
                 }
             }
-            $html .= '<p>' . nl2br($content) . '</p>';
+            if (trim((string) $record->content) !== '') {
+                $html .= '<p>' . nl2br($content) . '</p>';
+            }
+            foreach ($screenshots as $screenshot) {
+                $html .= '<p><small>' . get_string('screenshot:attachment', 'local_quicknote') . ': '
+                    . s($screenshot['filename']) . '</small></p>';
+            }
             $html .= '<hr style="color: #f8f9fa;">';
 
             $pdf->writeHTML($html, true, false, true, false, '');
@@ -199,24 +216,22 @@ if ($export === 'md') {
     if (empty($noterecords)) {
         $md .= get_string('note:empty', 'local_quicknote') . "\n";
     } else {
-        $currentcourseid = null;
+        $currentgroup = null;
 
         foreach ($noterecords as $record) {
-            if (empty(trim($record->content)) && empty(trim($record->quote))) {
+            $screenshots = \local_quicknote\local\screenshot_manager::get_for_note((int) $record->id);
+            if (empty(trim($record->content)) && empty(trim($record->quote)) && empty($screenshots)) {
                 continue;
             }
 
-            if ($currentcourseid !== $record->courseid) {
-                $coursefullname = format_string(
-                    $record->coursefullname,
-                    true,
-                    [
-                        'context' => context_course::instance($record->courseid),
-                    ]
-                );
+            $group = !empty($record->isglobal) ? 'global' : (string) $record->pagehash;
+            if ($currentgroup !== $group) {
+                $label = !empty($record->isglobal)
+                    ? get_string('note:globalbadge', 'local_quicknote')
+                    : $recordlabel($record);
 
-                $md .= "## " . $coursefullname . "\n\n";
-                $currentcourseid = $record->courseid;
+                $md .= "## " . $label . "\n\n";
+                $currentgroup = $group;
             }
 
             $timeupdated = userdate($record->timemodified, get_string('strftimedatetimeshort', 'langconfig'));
@@ -241,6 +256,9 @@ if ($export === 'md') {
                 }
             }
             $md .= $content . "\n\n";
+            foreach ($screenshots as $screenshot) {
+                $md .= "![" . $screenshot['filename'] . "](" . $screenshot['url'] . ")\n\n";
+            }
             $md .= "---\n\n";
         }
     }
@@ -253,25 +271,25 @@ if ($export === 'md') {
 
 $notes = [];
 foreach ($noterecords as $record) {
-    // Only format notes with content or quote.
-    if (empty(trim($record->content)) && empty(trim($record->quote))) {
+    $screenshots = \local_quicknote\local\screenshot_manager::get_for_note((int) $record->id);
+
+    // Only format notes with content, a quote or a screenshot.
+    if (empty(trim($record->content)) && empty(trim($record->quote)) && empty($screenshots)) {
         continue;
     }
 
     // Prepare variables for the template. Mustache escapes standard tags {{ }} automatically.
     $notes[] = [
-        'coursefullname' => format_string(
-            $record->coursefullname,
-            true,
-            [
-                'context' => context_course::instance($record->courseid),
-            ]
-        ),
+        'coursefullname' => $recordlabel($record),
+        'isglobal' => !empty($record->isglobal),
+        'globalbadge' => get_string('note:globalbadge', 'local_quicknote'),
         'content' => $record->content,
         'timeupdated' => userdate($record->timemodified, get_string('strftimedatetimeshort', 'langconfig')),
         'url' => !empty(clean_param($record->url, PARAM_URL)) ? (new moodle_url($record->url))->out(false) : null,
         'quote' => !empty($record->quote) ? $record->quote : null,
         'quoteurl' => !empty(clean_param($record->quoteurl, PARAM_URL)) ? (new moodle_url($record->quoteurl))->out(false) : null,
+        'screenshots' => $screenshots,
+        'hasscreenshots' => !empty($screenshots),
     ];
 }
 

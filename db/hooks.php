@@ -19,6 +19,7 @@
  *
  * @package     local_quicknote
  * @copyright   2026 Matheus Mathias
+ * @copyright   2026 Andreas Giesen (downstream changes)
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -26,14 +27,6 @@ defined('MOODLE_INTERNAL') || die();
 
 // Hook callbacks for local_quicknote.
 $callbacks = [
-    [
-        'hook' => \core_course\hook\after_form_definition::class,
-        'callback' => [\local_quicknote\hooks::class, 'course_edit_form'],
-    ],
-    [
-        'hook' => \core_course\hook\after_form_submission::class,
-        'callback' => [\local_quicknote\hooks::class, 'course_edit_submission'],
-    ],
     [
         'hook' => \core\hook\output\before_standard_top_of_body_html_generation::class,
         'callback' => 'local_quicknote\hooks::before_standard_top_of_body_html_generation',

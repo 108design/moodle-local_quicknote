@@ -19,6 +19,7 @@
  *
  * @package     local_quicknote
  * @copyright   2026 Matheus Mathias
+ * @copyright   2026 Andreas Giesen (downstream changes)
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -26,14 +27,6 @@ defined('MOODLE_INTERNAL') || die();
 
 if ($hassiteconfig) {
     $settings = new admin_settingpage('local_quicknote', get_string('pluginname', 'local_quicknote'));
-
-    // Adds global configuration checkbox.
-    $settings->add(new admin_setting_configcheckbox(
-        'local_quicknote/default_enabled',
-        get_string('default_enabled', 'local_quicknote'),
-        get_string('default_enabled_desc', 'local_quicknote'),
-        1
-    ));
 
     // Adds position option.
     $settings->add(new admin_setting_configselect(
@@ -45,14 +38,6 @@ if ($hassiteconfig) {
             'right' => get_string('position_right', 'local_quicknote'),
             'left'  => get_string('position_left', 'local_quicknote'),
         ]
-    ));
-
-    // Adds site-wide disabled page type patterns.
-    $settings->add(new admin_setting_configtextarea(
-        'local_quicknote/disabled_pagetypes',
-        get_string('setting:disabled_pagetypes', 'local_quicknote'),
-        get_string('setting:disabled_pagetypes_desc', 'local_quicknote'),
-        ''
     ));
 
     // Adds notes per page option.

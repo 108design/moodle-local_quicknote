@@ -326,10 +326,30 @@ define([
         if (!textarea) {
             return;
         }
-        var maxHeight = Math.max(160, Math.floor(window.innerHeight * 0.45));
+        var configuredMaxHeight = parseFloat(window.getComputedStyle(textarea).maxHeight);
+        var maxHeight = Number.isFinite(configuredMaxHeight) && configuredMaxHeight > 0
+            ? configuredMaxHeight
+            : Math.floor(window.innerHeight * 0.45);
         textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
-        textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+        var borderHeight = Math.max(0, textarea.offsetHeight - textarea.clientHeight);
+        var contentHeight = textarea.scrollHeight + borderHeight;
+        textarea.style.height = Math.min(contentHeight, maxHeight) + 'px';
+        textarea.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
+    };
+
+    var autogrowTextareas = function() {
+        if (!state.root) {
+            return;
+        }
+        state.root.querySelectorAll(SELECTORS.textarea).forEach(function(textarea) {
+            autogrowTextarea(textarea);
+        });
+    };
+
+    var scheduleAutogrowTextareas = function() {
+        window.requestAnimationFrame(function() {
+            autogrowTextareas();
+        });
     };
 
     var renderTagsAndPreview = function(noteEl, note) {
@@ -492,6 +512,7 @@ define([
         });
 
         applyFilter();
+        scheduleAutogrowTextareas();
     };
 
     var openSidebar = function() {
@@ -613,6 +634,7 @@ define([
         }
 
         if (isopen) {
+            scheduleAutogrowTextareas();
             var closeBtn = panel ? panel.querySelector(SELECTORS.close) : null;
             if (closeBtn) {
                 closeBtn.focus();

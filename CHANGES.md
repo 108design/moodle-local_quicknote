@@ -1,5 +1,8 @@
 # Moodle plugin: local_quicknote
 
+## 0.11.0-108design.6 (2026-08-28)
+- Recalculate every note textarea after it has entered the document and whenever the sidebar opens, so existing long content immediately grows to the configured maximum and then becomes internally scrollable.
+
 ## 0.11.0-108design.5 (2026-08-28)
 - Changed Notes Center live search to replace results asynchronously so the search field retains focus while typing and when clearing.
 - Increased and explicitly applied the card-header tint so it remains visibly distinct from the lighter footer across themes.

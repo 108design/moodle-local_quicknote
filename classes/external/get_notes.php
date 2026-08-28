@@ -10,6 +10,7 @@ namespace local_quicknote\external;
 
 use context_system;
 use local_quicknote\local\page_identity;
+use local_quicknote\local\tag_manager;
 
 /**
  * Retrieve the current user's notes for one page plus their global notes.
@@ -48,7 +49,13 @@ class get_notes extends \core_external\external_api {
         $records = $DB->get_records_select(
             'local_quicknote_notes', $select, $queryparams, 'isglobal DESC, timemodified DESC, id DESC'
         );
-        return array_map([save_note::class, 'export_note'], array_values($records));
+        $records = array_values($records);
+        $tags = tag_manager::get_for_notes(array_column($records, 'id'), (int) $USER->id);
+        $result = [];
+        foreach ($records as $record) {
+            $result[] = save_note::export_note($record, $tags[(int) $record->id] ?? []);
+        }
+        return $result;
     }
 
     public static function execute_returns(): \core_external\external_multiple_structure {

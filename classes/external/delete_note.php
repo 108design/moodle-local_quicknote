@@ -10,6 +10,7 @@ namespace local_quicknote\external;
 
 use context_system;
 use local_quicknote\local\screenshot_manager;
+use local_quicknote\local\tag_manager;
 
 /**
  * Delete one owned private note and its screenshots.
@@ -40,6 +41,7 @@ class delete_note extends \core_external\external_api {
             'userid' => $USER->id,
         ], '*', MUST_EXIST);
         screenshot_manager::delete_for_note((int) $note->id);
+        tag_manager::remove_for_note((int) $note->id, (int) $USER->id);
         $DB->delete_records('local_quicknote_notes', ['id' => $note->id]);
         return ['noteid' => (int) $note->id, 'deleted' => true];
     }

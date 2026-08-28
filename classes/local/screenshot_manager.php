@@ -97,7 +97,21 @@ final class screenshot_manager {
      * @return array
      */
     public static function get_for_note(int $noteid): array {
-        $files = get_file_storage()->get_area_files(
+        $files = self::get_stored_files_for_note($noteid);
+
+        return array_map([self::class, 'export_file'], array_values($files));
+    }
+
+    /**
+     * Return stored screenshot files for a server-side export.
+     *
+     * Callers must already have enforced note ownership.
+     *
+     * @param int $noteid Note id.
+     * @return \stored_file[]
+     */
+    public static function get_stored_files_for_note(int $noteid): array {
+        return get_file_storage()->get_area_files(
             context_system::instance()->id,
             'local_quicknote',
             self::FILEAREA,
@@ -105,8 +119,6 @@ final class screenshot_manager {
             'timecreated ASC, id ASC',
             false
         );
-
-        return array_map([self::class, 'export_file'], array_values($files));
     }
 
     /** Delete one owned screenshot. */

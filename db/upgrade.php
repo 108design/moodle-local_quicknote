@@ -153,5 +153,31 @@ function xmldb_local_quicknote_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026082600, 'local', 'quicknote');
     }
 
+    if ($oldversion < 2026082800) {
+        $table = new xmldb_table('local_quicknote_notes');
+        $contentformatfield = new xmldb_field(
+            'contentformat', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0', 'content'
+        );
+        if (!$dbman->field_exists($table, $contentformatfield)) {
+            // Existing notes remain plain text until their content is actually edited.
+            $dbman->add_field($table, $contentformatfield);
+        }
+
+        upgrade_plugin_savepoint(true, 2026082800, 'local', 'quicknote');
+    }
+
+    if ($oldversion < 2026082801) {
+        $table = new xmldb_table('local_quicknote_notes');
+        $contentformatfield = new xmldb_field(
+            'contentformat', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '2', 'content'
+        );
+        $dbman->change_field_default($table, $contentformatfield);
+
+        // The immediately preceding downstream build used XMLDB default 0; all such rows are legacy plain text.
+        $DB->set_field('local_quicknote_notes', 'contentformat', FORMAT_PLAIN, ['contentformat' => FORMAT_MOODLE]);
+
+        upgrade_plugin_savepoint(true, 2026082801, 'local', 'quicknote');
+    }
+
     return true;
 }

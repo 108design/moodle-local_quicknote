@@ -126,6 +126,10 @@ class hooks {
             'pastehint' => get_string('screenshot:pastehint', 'local_quicknote'),
             'uploadingtext' => get_string('screenshot:uploading', 'local_quicknote'),
             'deleteimagelabel' => get_string('screenshot:delete', 'local_quicknote'),
+            'taglabel' => get_string('tags', 'local_quicknote'),
+            'tagplaceholder' => get_string('tags:placeholder', 'local_quicknote'),
+            'previewlabel' => get_string('markdown:preview', 'local_quicknote'),
+            'tagsenabled' => \local_quicknote\local\tag_manager::is_enabled() ? '1' : '0',
         ]);
 
         return $html;

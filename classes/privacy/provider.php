@@ -53,6 +53,7 @@ class provider implements
             'pagetitle' => 'privacy:metadata:local_quicknote_notes:pagetitle',
             'isglobal' => 'privacy:metadata:local_quicknote_notes:isglobal',
             'content' => 'privacy:metadata:local_quicknote_notes:content',
+            'contentformat' => 'privacy:metadata:local_quicknote_notes:contentformat',
             'quote' => 'privacy:metadata:local_quicknote_notes:quote',
             'quoteurl' => 'privacy:metadata:local_quicknote_notes:quoteurl',
             'url' => 'privacy:metadata:local_quicknote_notes:url',
@@ -60,6 +61,7 @@ class provider implements
             'timemodified' => 'privacy:metadata:local_quicknote_notes:timemodified',
         ], 'privacy:metadata:local_quicknote_notes');
         $collection->add_subsystem_link('core_files', [], 'privacy:metadata:files');
+        $collection->add_subsystem_link('core_tag', [], 'privacy:metadata:tags');
 
         return $collection;
     }
@@ -118,11 +120,20 @@ class provider implements
         $params['systemcontextid'] = context_system::instance()->id;
 
         $notes = $DB->get_recordset_sql($sql, $params);
+        $noteids = [];
+        foreach ($notes as $note) {
+            $noteids[] = (int) $note->id;
+        }
+        $notes->close();
+        $tagsbynote = \local_quicknote\local\tag_manager::get_for_notes($noteids, (int) $userid);
+        $notes = $DB->get_recordset_sql($sql, $params);
 
         foreach ($notes as $note) {
             $context = context::instance_by_id($note->contextid);
             $data = (object) [
                 'content' => $note->content,
+                'contentformat' => (int) ($note->contentformat ?? FORMAT_PLAIN),
+                'tags' => implode(', ', array_column($tagsbynote[(int) $note->id] ?? [], 'name')),
                 'quote' => $note->quote,
                 'quoteurl' => $note->quoteurl,
                 'url' => $note->url,
@@ -156,10 +167,10 @@ class provider implements
         global $DB;
 
         if ($context->contextlevel == CONTEXT_COURSE) {
-            self::delete_files_for_select('courseid = :courseid', ['courseid' => $context->instanceid]);
+            self::delete_dependencies_for_select('courseid = :courseid', ['courseid' => $context->instanceid]);
             $DB->delete_records('local_quicknote_notes', ['courseid' => $context->instanceid]);
         } else if ($context->id == context_system::instance()->id) {
-            self::delete_files_for_select('courseid = :courseid', ['courseid' => 0]);
+            self::delete_dependencies_for_select('courseid = :courseid', ['courseid' => 0]);
             $DB->delete_records('local_quicknote_notes', ['courseid' => 0]);
         }
     }
@@ -193,12 +204,12 @@ class provider implements
             [$insql, $inparams] = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED);
             $params = ['userid' => $userid] + $inparams;
             $select = "userid = :userid AND courseid $insql";
-            self::delete_files_for_select($select, $params);
+            self::delete_dependencies_for_select($select, $params);
             $DB->delete_records_select('local_quicknote_notes', $select, $params);
         }
 
         if ($deletesystem) {
-            self::delete_files_for_select(
+            self::delete_dependencies_for_select(
                 'userid = :userid AND courseid = :courseid',
                 ['userid' => $userid, 'courseid' => 0]
             );
@@ -248,12 +259,12 @@ class provider implements
         if ($context->contextlevel == CONTEXT_COURSE) {
             $params = ['courseid' => $context->instanceid] + $userparams;
             $select = "courseid = :courseid AND userid $usersql";
-            self::delete_files_for_select($select, $params);
+            self::delete_dependencies_for_select($select, $params);
             $DB->delete_records_select('local_quicknote_notes', $select, $params);
         } else if ($context->id == context_system::instance()->id) {
             $params = ['courseid' => 0] + $userparams;
             $select = "courseid = :courseid AND userid $usersql";
-            self::delete_files_for_select($select, $params);
+            self::delete_dependencies_for_select($select, $params);
             $DB->delete_records_select('local_quicknote_notes', $select, $params);
         }
     }
@@ -264,12 +275,13 @@ class provider implements
      * @param string $select SQL selection without WHERE.
      * @param array $params SQL parameters.
      */
-    private static function delete_files_for_select(string $select, array $params): void {
+    private static function delete_dependencies_for_select(string $select, array $params): void {
         global $DB;
 
-        $noteids = $DB->get_fieldset_select('local_quicknote_notes', 'id', $select, $params);
-        foreach ($noteids as $noteid) {
-            \local_quicknote\local\screenshot_manager::delete_for_note((int) $noteid);
+        $notes = $DB->get_records_select('local_quicknote_notes', $select, $params, '', 'id,userid');
+        foreach ($notes as $note) {
+            \local_quicknote\local\screenshot_manager::delete_for_note((int) $note->id);
+            \local_quicknote\local\tag_manager::remove_for_note((int) $note->id, (int) $note->userid);
         }
     }
 }

@@ -52,6 +52,9 @@
     data-globalbadge="{{globalbadge}}"
     data-uploadingtext="{{uploadingtext}}"
     data-deleteimagelabel="{{deleteimagelabel}}"
+    data-tagplaceholder="{{tagplaceholder}}"
+    data-previewlabel="{{previewlabel}}"
+    data-tagsenabled="{{tagsenabled}}"
 >
     <button
         type="button"
@@ -173,6 +176,22 @@
                     <button type="button" class="btn btn-sm btn-link local-quicknote__copy-btn" data-action="copy-note" title="{{#str}} copy, core {{/str}}">
                         <i class="fa-regular fa-copy" aria-hidden="true"></i>
                     </button>
+                </div>
+
+                <details class="local-quicknote__preview" data-region="note-preview-wrapper" hidden>
+                    <summary>{{previewlabel}}</summary>
+                    <div class="local-quicknote__preview-content" data-region="note-preview"></div>
+                </details>
+
+                <div class="local-quicknote__tags" data-region="note-tags-wrapper" hidden>
+                    <label class="local-quicknote__tags-label">{{taglabel}}</label>
+                    <input
+                        type="text"
+                        class="form-control form-control-sm local-quicknote__tags-input"
+                        data-action="edit-tags"
+                        placeholder="{{tagplaceholder}}"
+                        aria-label="{{taglabel}}"
+                    >
                 </div>
 
                 <div class="local-quicknote__screenshots" data-region="screenshots"></div>

@@ -50,7 +50,11 @@ define([
         globaltoggle: '[data-action="toggle-global"]',
         globalbadge: '[data-region="global-badge"]',
         screenshots: '[data-region="screenshots"]',
-        deletescreenshot: '[data-action="delete-screenshot"]'
+        deletescreenshot: '[data-action="delete-screenshot"]',
+        tagswrapper: '[data-region="note-tags-wrapper"]',
+        tagsinput: '[data-action="edit-tags"]',
+        previewwrapper: '[data-region="note-preview-wrapper"]',
+        preview: '[data-region="note-preview"]'
     };
 
     var SAVE_DELAY = 500;
@@ -93,6 +97,11 @@ define([
             pagetitle: state.pagetitle,
             courseid: state.courseid,
             isglobal: false,
+            contentformat: 4,
+            contenthtml: '',
+            tagsenabled: state.tagsenabled,
+            tags: [],
+            tagschanged: false,
             screenshots: [],
             timecreated: now,
             timemodified: now,
@@ -117,6 +126,11 @@ define([
             url: note.url || '',
             pagetitle: note.pagetitle || '',
             isglobal: !!note.isglobal,
+            contentformat: Number(note.contentformat || 0),
+            contenthtml: note.contenthtml || '',
+            tagsenabled: note.tagsenabled !== false,
+            tags: note.tags || [],
+            tagschanged: false,
             screenshots: note.screenshots || [],
             status: note.status || ''
         });
@@ -294,6 +308,68 @@ define([
         });
     };
 
+    var parseTags = function(value) {
+        var seen = {};
+        return String(value || '').split(',').map(function(tag) {
+            return tag.trim();
+        }).filter(function(tag) {
+            var key = tag.toLowerCase();
+            if (!tag || seen[key]) {
+                return false;
+            }
+            seen[key] = true;
+            return true;
+        }).slice(0, 20);
+    };
+
+    var autogrowTextarea = function(textarea) {
+        if (!textarea) {
+            return;
+        }
+        var maxHeight = Math.max(160, Math.floor(window.innerHeight * 0.45));
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
+        textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    };
+
+    var renderTagsAndPreview = function(noteEl, note) {
+        var tagswrapper = noteEl.querySelector(SELECTORS.tagswrapper);
+        var tagsinput = noteEl.querySelector(SELECTORS.tagsinput);
+        var tagslabel = noteEl.querySelector('.local-quicknote__tags-label');
+        var previewwrapper = noteEl.querySelector(SELECTORS.previewwrapper);
+        var preview = noteEl.querySelector(SELECTORS.preview);
+
+        if (tagswrapper) {
+            if (note.tagsenabled) {
+                tagswrapper.removeAttribute('hidden');
+            } else {
+                tagswrapper.setAttribute('hidden', 'hidden');
+            }
+        }
+        if (tagsinput && !note.tagschanged) {
+            var tagsinputid = 'local-quicknote-tags-' + note.clientid;
+            tagsinput.id = tagsinputid;
+            if (tagslabel) {
+                tagslabel.setAttribute('for', tagsinputid);
+            }
+            tagsinput.value = (note.tags || []).map(function(tag) {
+                return tag.name || '';
+            }).filter(Boolean).join(', ');
+        }
+
+        if (preview) {
+            preview.innerHTML = note.contenthtml || '';
+        }
+        if (previewwrapper) {
+            if (String(note.content || '').trim()) {
+                previewwrapper.removeAttribute('hidden');
+            } else {
+                previewwrapper.setAttribute('hidden', 'hidden');
+                previewwrapper.removeAttribute('open');
+            }
+        }
+    };
+
     var updateNoteElement = function(note, noteEl, preservecontent) {
         var textarea = noteEl.querySelector(SELECTORS.textarea);
         var currentcontent = preservecontent && textarea ? textarea.value : note.content;
@@ -309,11 +385,7 @@ define([
             if (textarea.value !== currentcontent) {
                 textarea.value = currentcontent;
             }
-        }
-
-        var label = noteEl.querySelector('label');
-        if (label) {
-            label.setAttribute('for', textareaid);
+            autogrowTextarea(textarea);
         }
 
         var deletebutton = noteEl.querySelector(SELECTORS.deletebutton);
@@ -326,6 +398,7 @@ define([
         setNoteLocation(noteEl, note.url, note.hasquote);
         setNoteGlobal(noteEl, note);
         renderScreenshots(noteEl, note);
+        renderTagsAndPreview(noteEl, note);
 
         var copyBtn = noteEl.querySelector('[data-action="copy-note"]');
         if (copyBtn) {
@@ -361,7 +434,10 @@ define([
 
         return String(note.content || '').toLowerCase().indexOf(term) !== -1 ||
             String(note.quote || '').toLowerCase().indexOf(term) !== -1 ||
-            String(note.pagetitle || '').toLowerCase().indexOf(term) !== -1;
+            String(note.pagetitle || '').toLowerCase().indexOf(term) !== -1 ||
+            (note.tags || []).some(function(tag) {
+                return String(tag.name || '').toLowerCase().indexOf(term) !== -1;
+            });
     };
 
     var applyFilter = function() {
@@ -551,6 +627,10 @@ define([
     var saveNote = function(note) {
         var request;
         var noteEl = getNoteElementByKey(note.clientid);
+        var submittedTags = (note.tags || []).map(function(tag) {
+            return tag.name || '';
+        });
+        var updateTags = !!note.tagschanged;
 
         if (noteEl) {
             setNoteStatus(noteEl, state.strings.savingtext, note.timemodified);
@@ -566,7 +646,9 @@ define([
                 pagetitle: note.pagetitle || state.pagetitle,
                 isglobal: !!note.isglobal,
                 quote: note.quote || '',
-                quoteurl: note.quoteurl || ''
+                quoteurl: note.quoteurl || '',
+                tags: submittedTags,
+                updatetags: updateTags
             }
         }])[0];
 
@@ -583,6 +665,15 @@ define([
             note.url = savednote.url;
             note.pagetitle = savednote.pagetitle;
             note.isglobal = savednote.isglobal;
+            note.contentformat = savednote.contentformat;
+            note.contenthtml = savednote.contenthtml;
+            note.tagsenabled = savednote.tagsenabled;
+            if (!updateTags || submittedTags.join('\n') === (note.tags || []).map(function(tag) {
+                return tag.name || '';
+            }).join('\n')) {
+                note.tags = savednote.tags;
+                note.tagschanged = false;
+            }
             note.screenshots = savednote.screenshots;
             note.quote = savednote.quote;
             note.quoteurl = savednote.quoteurl;
@@ -598,6 +689,7 @@ define([
                 setNoteLocation(currentnoteEl, note.url, note.hasquote);
                 setNoteGlobal(currentnoteEl, note);
                 renderScreenshots(currentnoteEl, note);
+                renderTagsAndPreview(currentnoteEl, note);
 
                 setTimeout(function() {
                     note.status = '';
@@ -1043,6 +1135,7 @@ define([
 
                 note.content = textarea.value;
                 note.timemodified = Math.floor(Date.now() / 1000);
+                autogrowTextarea(textarea);
 
                 var noteEl = textarea.closest(SELECTORS.note);
                 var cBtn = noteEl ? noteEl.querySelector('[data-action="copy-note"]') : null;
@@ -1060,6 +1153,22 @@ define([
                 return;
             }
 
+            var tagsinput = e.target.closest(SELECTORS.tagsinput);
+            if (tagsinput) {
+                var tagsnoteEl = tagsinput.closest(SELECTORS.note);
+                var tagsnote = tagsnoteEl ? getNoteByKey(tagsnoteEl.getAttribute('data-note-key')) : null;
+                if (!tagsnote) {
+                    return;
+                }
+                tagsnote.tags = parseTags(tagsinput.value).map(function(name) {
+                    return {id: 0, name: name};
+                });
+                tagsnote.tagschanged = true;
+                tagsnote.timemodified = Math.floor(Date.now() / 1000);
+                applyFilter();
+                return;
+            }
+
             var search = e.target.closest(SELECTORS.search);
             if (search) {
                 handleSearchInput();
@@ -1067,6 +1176,16 @@ define([
         });
 
         state.root.addEventListener('change', function(e) {
+            var tagsinput = e.target.closest(SELECTORS.tagsinput);
+            if (tagsinput) {
+                var tagsnoteEl = tagsinput.closest(SELECTORS.note);
+                var tagsnote = tagsnoteEl ? getNoteByKey(tagsnoteEl.getAttribute('data-note-key')) : null;
+                if (tagsnote) {
+                    scheduleSave(tagsnote);
+                }
+                return;
+            }
+
             var globalToggle = e.target.closest(SELECTORS.globaltoggle);
             if (!globalToggle) {
                 return;
@@ -1184,6 +1303,7 @@ define([
                 courseid: Number(config.courseid || rootEl.getAttribute('data-courseid')),
                 pageurl: config.pageurl || rootEl.getAttribute('data-pageurl') || window.location.href.split('#')[0],
                 pagetitle: config.pagetitle || rootEl.getAttribute('data-pagetitle') || document.title,
+                tagsenabled: rootEl.getAttribute('data-tagsenabled') === '1',
                 notes: [],
                 timers: {},
                 strings: {

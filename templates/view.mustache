@@ -58,9 +58,9 @@
 <div class="local-quicknote-center">
     <div class="local-quicknote-center__controls mb-4">
         <form method="GET" action="{{config.wwwroot}}/local/quicknote/view.php" class="local-quicknote-center__filters">
-            <div class="form-group row align-items-center mb-0">
-                <label for="coursefilter" class="col-sm-3 col-md-2 col-form-label font-weight-bold">{{filterbycourse}}</label>
-                <div class="col-sm-9 col-md-4 col-lg-4 mb-2 mb-md-0">
+            <div class="local-quicknote-center__filter-row">
+                <div class="local-quicknote-center__filter-group">
+                    <label for="coursefilter" class="font-weight-bold mb-0">{{filterbycourse}}</label>
                     <select name="coursefilter" id="coursefilter" class="custom-select form-select">
                         <option value="0">{{allcourses}}</option>
                         {{#courses}}
@@ -68,8 +68,19 @@
                         {{/courses}}
                     </select>
                 </div>
+                {{#hastags}}
+                <div class="local-quicknote-center__filter-group">
+                    <label for="tagfilter" class="font-weight-bold mb-0">{{filterbytag}}</label>
+                    <select name="tagfilter" id="tagfilter" class="custom-select form-select">
+                        <option value="0">{{alltags}}</option>
+                        {{#usertags}}
+                            <option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>
+                        {{/usertags}}
+                    </select>
+                </div>
+                {{/hastags}}
                 {{#hasnotestosearch}}
-                <div class="col-sm-12 col-md-6 col-lg-6">
+                <div class="local-quicknote-center__search-group">
                     <div class="input-group">
                         <label class="sr-only" for="searchterm">{{searchnotes}}</label>
                         <div class="local-quicknote-center__search-wrapper">
@@ -79,7 +90,7 @@
                             </button>
                         </div>
                         <div class="input-group-append">
-                            <button class="btn btn-primary" type="submit">
+                            <button class="btn btn-primary local-quicknote-center__search-submit" type="submit">
                                 <i class="fa fa-search mr-1" aria-hidden="true"></i>{{search}}
                             </button>
                         </div>
@@ -91,10 +102,10 @@
 
         {{#hasnotes}}
         <div class="local-quicknote-center__exports">
-            <a href="{{config.wwwroot}}/local/quicknote/view.php?export=md&amp;coursefilter={{coursefilter}}&amp;searchterm={{searchterm}}" class="local-quicknote-center__export" title="{{exportmd}}" aria-label="{{exportmd}}">
+            <a href="{{mdurl}}" class="local-quicknote-center__export" title="{{exportmd}}" aria-label="{{exportmd}}">
                 <i class="fa fa-file-text-o" aria-hidden="true"></i>
             </a>
-            <a href="{{config.wwwroot}}/local/quicknote/view.php?export=pdf&amp;coursefilter={{coursefilter}}&amp;searchterm={{searchterm}}" class="local-quicknote-center__export" title="{{exportpdf}}" aria-label="{{exportpdf}}">
+            <a href="{{pdfurl}}" class="local-quicknote-center__export" title="{{exportpdf}}" aria-label="{{exportpdf}}">
                 <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
             </a>
         </div>
@@ -104,30 +115,23 @@
     <div class="row">
         {{#notes}}
         <div class="col-12 col-md-6 col-xl-4 mb-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
-                    <span class="badge badge-primary bg-primary text-white text-truncate d-inline-block w-100 p-1 mw-100 text-left text-start local-quicknote-center__badge" title="{{coursefullname}}">{{coursefullname}}</span>
-                    {{#isglobal}}<span class="badge badge-info bg-info text-white mt-1">{{globalbadge}}</span>{{/isglobal}}
+            <div class="card h-100 shadow-sm" data-noteid="{{id}}">
+                <div class="card-header local-quicknote-center__card-header">
+                    <span class="local-quicknote-center__title" title="{{coursefullname}}">{{coursefullname}}</span>
+                    {{#isglobal}}<span class="badge badge-info bg-info text-white">{{globalbadge}}</span>{{/isglobal}}
                 </div>
                 <div class="card-body">
                     {{#quote}}
                     <blockquote class="blockquote border-left border-primary pl-3 mb-3 local-quicknote-center__quote">
                         <p class="mb-1 font-italic text-muted local-quicknote-center__quote-text">{{quote}}</p>
-                        {{#quoteurl}}
-                        <footer class="blockquote-footer mt-1">
-                            <a href="{{quoteurl}}" target="_blank" class="small">{{#str}} note:viewintext, local_quicknote {{/str}}</a>
-                        </footer>
-                        {{/quoteurl}}
                     </blockquote>
                     {{/quote}}
-                    {{^quote}}
-                        {{#url}}
-                        <div class="mb-3">
-                            <a href="{{url}}" target="_blank" class="small text-muted"><i class="fa fa-external-link mr-1"></i>{{#str}} note:viewintext, local_quicknote {{/str}}</a>
-                        </div>
-                        {{/url}}
-                    {{/quote}}
-                    <p class="card-text local-quicknote-center__content">{{content}}</p>
+                    <div class="card-text local-quicknote-center__content">{{{contenthtml}}}</div>
+                    {{#hastags}}
+                    <div class="local-quicknote-center__tags" aria-label="{{#str}} tags, local_quicknote {{/str}}">
+                        {{#tags}}<span class="badge badge-primary bg-primary text-bg-primary local-quicknote-center__tag">{{name}}</span>{{/tags}}
+                    </div>
+                    {{/hastags}}
                     {{#hasscreenshots}}
                     <div class="local-quicknote-center__screenshots">
                         {{#screenshots}}
@@ -138,8 +142,26 @@
                     </div>
                     {{/hasscreenshots}}
                 </div>
-                <div class="card-footer bg-white border-top-0 text-muted small pb-3">
-                    <i class="fa fa-clock-o mr-1"></i>{{timeupdated}}
+                <div class="card-footer local-quicknote-center__card-footer text-muted small">
+                    <span><i class="fa fa-clock-o mr-1" aria-hidden="true"></i>{{timeupdated}}</span>
+                    <div class="local-quicknote-center__actionbar">
+                        {{#actionurl}}
+                        <a href="{{actionurl}}" target="_blank" rel="noopener" class="local-quicknote-center__card-action" title="{{#str}} note:viewintext, local_quicknote {{/str}}" aria-label="{{#str}} note:viewintext, local_quicknote {{/str}}">
+                            <i class="fa fa-external-link" aria-hidden="true"></i>
+                        </a>
+                        {{/actionurl}}
+                        <form method="post" action="{{config.wwwroot}}/local/quicknote/view.php" class="local-quicknote-center__delete-form" data-delete-confirm="{{deleteconfirm}}">
+                            <input type="hidden" name="sesskey" value="{{sesskey}}">
+                            <input type="hidden" name="deleteid" value="{{id}}">
+                            <input type="hidden" name="coursefilter" value="{{coursefilter}}">
+                            <input type="hidden" name="tagfilter" value="{{tagfilter}}">
+                            <input type="hidden" name="searchterm" value="{{searchterm}}">
+                            <input type="hidden" name="page" value="{{page}}">
+                            <button type="submit" class="local-quicknote-center__card-action" title="{{#str}} note:delete, local_quicknote {{/str}}" aria-label="{{#str}} note:delete, local_quicknote {{/str}}">
+                                <i class="fa fa-trash" aria-hidden="true"></i>
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

@@ -308,11 +308,44 @@
 .local-quicknote__textarea {
     width: 100%;
     min-height: 7rem;
-    resize: vertical;
+    max-height: 45vh;
+    resize: none;
     border: 1px solid #c7d0dd;
     border-radius: 0.5rem;
     padding: 0.75rem;
     background: #fffef0;
+}
+
+.local-quicknote__preview {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid #d5ddea;
+    border-radius: 0.5rem;
+    background: #fff;
+}
+
+.local-quicknote__preview summary {
+    cursor: pointer;
+    color: #5f6b7a;
+    font-size: 0.8rem;
+}
+
+.local-quicknote__preview-content {
+    margin-top: 0.5rem;
+}
+
+.local-quicknote__preview-content > :last-child {
+    margin-bottom: 0;
+}
+
+.local-quicknote__tags {
+    margin-top: 0.75rem;
+}
+
+.local-quicknote__tags-label {
+    margin-bottom: 0.25rem;
+    color: #5f6b7a;
+    font-size: 0.8rem;
 }
 
 .local-quicknote__copy-btn {
@@ -386,13 +419,37 @@
 /* QuickNote Center View Styles */
 .local-quicknote-center__controls {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
+    gap: 1.5rem;
 }
 
 .local-quicknote-center__filters {
-    flex: 1 1 48rem;
+    flex: 1 1 auto;
     min-width: 0;
+}
+
+.local-quicknote-center__filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.local-quicknote-center__filter-group {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.local-quicknote-center__filter-group select {
+    width: auto;
+    min-width: 11rem;
+}
+
+.local-quicknote-center__search-group {
+    flex: 1 1 24rem;
+    min-width: 14rem;
 }
 
 .local-quicknote-center__exports {
@@ -401,7 +458,6 @@
     align-items: center;
     justify-content: flex-end;
     margin-left: auto;
-    padding-left: 0.5rem;
 }
 
 .local-quicknote-center__export {
@@ -438,9 +494,29 @@
     text-decoration: none;
 }
 
-.local-quicknote-center__badge {
-    max-width: 100%;
-    text-align: left;
+.local-quicknote-center__card-header,
+.local-quicknote-center__card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.local-quicknote-center__card-header {
+    background-color: rgba(0, 0, 0, 0.055);
+    background-color: rgba(var(--bs-body-color-rgb, 33, 37, 41), 0.055);
+}
+
+.local-quicknote-center__tag {
+    background-color: var(--bs-primary, var(--primary)) !important;
+}
+
+.local-quicknote-center__title {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .local-quicknote-center__quote {
@@ -454,7 +530,52 @@
 }
 
 .local-quicknote-center__content {
-    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.local-quicknote-center__content > :last-child {
+    margin-bottom: 0;
+}
+
+.local-quicknote-center__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 1rem;
+}
+
+.local-quicknote-center__actionbar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.local-quicknote-center__delete-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.local-quicknote-center__card-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    max-width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 1.25rem;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.local-quicknote-center__card-action:hover,
+.local-quicknote-center__card-action:focus {
+    color: var(--bs-primary, var(--primary));
+    text-decoration: none;
 }
 
 .local-quicknote-center__search-wrapper {
@@ -474,6 +595,11 @@
     padding-right: 2rem;
 }
 
+.input-group .btn.local-quicknote-center__search-submit {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
 .input-group .btn.local-quicknote-center__search-clear {
     position: absolute;
     right: 0.5rem;
@@ -491,6 +617,20 @@
 }
 
 @media (max-width: 767px) {
+    .local-quicknote-center__controls,
+    .local-quicknote-center__filter-row {
+        flex-wrap: wrap;
+    }
+
+    .local-quicknote-center__filter-group,
+    .local-quicknote-center__search-group {
+        width: 100%;
+    }
+
+    .local-quicknote-center__filter-group select {
+        flex: 1 1 auto;
+    }
+
     .local-quicknote-center__exports {
         width: 100%;
         margin-top: 0.5rem;

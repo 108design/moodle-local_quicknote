@@ -1,5 +1,20 @@
 # Moodle plugin: local_quicknote
 
+## 0.11.0-108design.4 (2026-08-28)
+- Added debounced live search in the Notes Center. Typing updates the result set after a short pause, and clearing the field or using its clear icon restores all notes immediately.
+- Changed note tag badges to the theme's primary accent with Bootstrap's matching contrast treatment.
+- Made card headers subtly darker than card footers for clearer visual separation.
+
+## 0.11.0-108design.3 (2026-08-28)
+- Added raw Markdown notes with safe Moodle rendering. Existing notes remain plain text until their content is edited.
+- Added bounded auto-growing textareas and an optional formatted preview.
+- Added user-specific Moodle tags in a dedicated collection excluded from Moodle's global tag search.
+- Extended search to note content, quotes, page titles, course names and tags, with course and tag filters.
+- Added owner-checked deletion to the Notes Center through an icon action bar alongside the source-page action.
+- Replaced badge-style card titles with Bootstrap card headers and added Bootstrap card footers for date and actions.
+- Embedded proportional screenshot images in PDF exports when supported by the server image stack.
+- Kept filter and search controls compact and left-aligned while export icons remain right-aligned.
+
 ## 0.10.0-108design.2 (2026-08-26)
 - Aligned the Markdown/PDF export controls with the filter and search row and reduced them to accessible 30 px icon buttons at the right edge.
 

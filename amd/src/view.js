@@ -16,65 +16,84 @@
 /**
  * @module      local_quicknote/view
  * @copyright   2026 Matheus Mathias
+ * @copyright   2026 Andreas Giesen (downstream changes)
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 define([], function() {
     return {
         init: function() {
-            var select = document.getElementById('coursefilter');
-            var isKeyboardNav = false;
-
-            if (!select) {
-                return;
-            }
-
-            select.addEventListener('keydown', function(e) {
-                // Up, Down, Left, Right arrows
-                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) !== -1) {
-                    isKeyboardNav = true;
+            var bindFilter = function(select) {
+                var isKeyboardNav = false;
+                if (!select) {
+                    return;
                 }
-                // Enter key
-                if (e.key === 'Enter') {
-                    if (this.form) {
+                select.addEventListener('keydown', function(e) {
+                    // Up, Down, Left, Right arrows.
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) !== -1) {
+                        isKeyboardNav = true;
+                    }
+                    if (e.key === 'Enter' && this.form) {
                         this.form.submit();
                     }
-                }
-            });
+                });
 
-            select.addEventListener('mousedown', function() {
-                isKeyboardNav = false;
-            });
+                select.addEventListener('mousedown', function() {
+                    isKeyboardNav = false;
+                });
 
-            select.addEventListener('change', function() {
-                if (!isKeyboardNav) {
-                    if (this.form) {
+                select.addEventListener('change', function() {
+                    if (!isKeyboardNav && this.form) {
                         this.form.submit();
                     }
-                }
-                isKeyboardNav = false; // Reset for next interaction
-            });
+                    isKeyboardNav = false;
+                });
+            };
+
+            bindFilter(document.getElementById('coursefilter'));
+            bindFilter(document.getElementById('tagfilter'));
 
             var searchInput = document.getElementById('searchterm');
             var clearSearchBtn = document.getElementById('clearsearch');
 
             if (searchInput && clearSearchBtn) {
+                var searchTimer = null;
+                var submittedSearch = searchInput.value.trim();
+                var submitSearch = function() {
+                    var nextSearch = searchInput.value.trim();
+                    if (nextSearch === submittedSearch || !searchInput.form) {
+                        return;
+                    }
+                    submittedSearch = nextSearch;
+                    searchInput.form.submit();
+                };
+
                 searchInput.addEventListener('input', function() {
                     if (this.value.trim().length > 0) {
                         clearSearchBtn.removeAttribute('hidden');
                     } else {
                         clearSearchBtn.setAttribute('hidden', 'hidden');
                     }
+
+                    window.clearTimeout(searchTimer);
+                    searchTimer = window.setTimeout(submitSearch, 400);
                 });
 
                 clearSearchBtn.addEventListener('click', function() {
+                    window.clearTimeout(searchTimer);
                     searchInput.value = '';
                     clearSearchBtn.setAttribute('hidden', 'hidden');
-                    if (searchInput.form) {
-                        searchInput.form.submit();
-                    }
+                    submitSearch();
                 });
             }
+
+            document.querySelectorAll('.local-quicknote-center__delete-form').forEach(function(form) {
+                form.addEventListener('submit', function(e) {
+                    if (!window.confirm(form.getAttribute('data-delete-confirm'))) {
+                        e.preventDefault();
+                    }
+                });
+            });
         }
     };
 });

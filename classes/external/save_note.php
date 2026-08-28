@@ -12,6 +12,7 @@ use context_system;
 use core_text;
 use local_quicknote\local\page_identity;
 use local_quicknote\local\screenshot_manager;
+use local_quicknote\local\tag_manager;
 
 /**
  * Create or update a private page-specific QuickNote.
@@ -32,6 +33,18 @@ class save_note extends \core_external\external_api {
             'isglobal' => new \core_external\external_value(PARAM_BOOL, 'Show note on every page.', VALUE_DEFAULT, false),
             'quote' => new \core_external\external_value(PARAM_RAW, 'Selected quote text.', VALUE_DEFAULT, ''),
             'quoteurl' => new \core_external\external_value(PARAM_RAW, 'URL pointing to the selected quote.', VALUE_DEFAULT, ''),
+            'tags' => new \core_external\external_multiple_structure(
+                new \core_external\external_value(PARAM_TAG, 'Tag name.'),
+                'User-entered note tags.',
+                VALUE_DEFAULT,
+                []
+            ),
+            'updatetags' => new \core_external\external_value(
+                PARAM_BOOL,
+                'Whether the supplied tags should replace the existing tags.',
+                VALUE_DEFAULT,
+                false
+            ),
         ]);
     }
 
@@ -43,7 +56,9 @@ class save_note extends \core_external\external_api {
         string $pagetitle = '',
         bool $isglobal = false,
         string $quote = '',
-        string $quoteurl = ''
+        string $quoteurl = '',
+        array $tags = [],
+        bool $updatetags = false
     ): array {
         global $DB, $USER;
 
@@ -56,6 +71,8 @@ class save_note extends \core_external\external_api {
             'isglobal' => $isglobal,
             'quote' => $quote,
             'quoteurl' => $quoteurl,
+            'tags' => $tags,
+            'updatetags' => $updatetags,
         ]);
 
         require_login();
@@ -79,10 +96,29 @@ class save_note extends \core_external\external_api {
             $params['quoteurl'] = page_identity::sanitise($params['quoteurl'], true);
         }
 
+        $existing = null;
+        if ($params['id']) {
+            $existing = $DB->get_record('local_quicknote_notes', [
+                'id' => $params['id'],
+                'userid' => $USER->id,
+            ], '*', MUST_EXIST);
+        }
+
+        $content = core_text::substr($params['content'], 0, 20000);
+        $contentformat = FORMAT_MARKDOWN;
+        if ($existing) {
+            $contentformat = isset($existing->contentformat) ? (int) $existing->contentformat : FORMAT_PLAIN;
+            if ((string) ($existing->content ?? '') !== $content) {
+                // A legacy plain-text note becomes Markdown only after a real content edit.
+                $contentformat = FORMAT_MARKDOWN;
+            }
+        }
+
         $record = (object) [
             'userid' => $USER->id,
             'courseid' => $params['courseid'],
-            'content' => core_text::substr($params['content'], 0, 20000),
+            'content' => $content,
+            'contentformat' => $contentformat,
             'quote' => core_text::substr($params['quote'], 0, 5000),
             'quoteurl' => core_text::substr($params['quoteurl'], 0, 2048),
             'url' => core_text::substr($params['url'], 0, 2048),
@@ -92,17 +128,17 @@ class save_note extends \core_external\external_api {
             'timemodified' => time(),
         ];
 
-        if ($params['id']) {
-            $existing = $DB->get_record('local_quicknote_notes', [
-                'id' => $params['id'],
-                'userid' => $USER->id,
-            ], '*', MUST_EXIST);
+        if ($existing) {
             $record->id = $existing->id;
             $record->timecreated = $existing->timecreated;
             $DB->update_record('local_quicknote_notes', $record);
         } else {
             $record->timecreated = $record->timemodified;
             $record->id = $DB->insert_record('local_quicknote_notes', $record);
+        }
+
+        if ($params['updatetags']) {
+            tag_manager::set_for_note((int) $record->id, (int) $USER->id, $params['tags']);
         }
 
         return self::export_note($DB->get_record('local_quicknote_notes', ['id' => $record->id], '*', MUST_EXIST));
@@ -118,6 +154,8 @@ class save_note extends \core_external\external_api {
             'userid' => new \core_external\external_value(PARAM_INT, 'Owner user id.'),
             'courseid' => new \core_external\external_value(PARAM_INT, 'Course id or 0.'),
             'content' => new \core_external\external_value(PARAM_RAW, 'Note content.'),
+            'contentformat' => new \core_external\external_value(PARAM_INT, 'Stored Moodle text format.'),
+            'contenthtml' => new \core_external\external_value(PARAM_RAW, 'Safely rendered note content.'),
             'quote' => new \core_external\external_value(PARAM_RAW, 'Selected quote text.'),
             'hasquote' => new \core_external\external_value(PARAM_BOOL, 'Whether the note contains a quote.'),
             'quotetext' => new \core_external\external_value(PARAM_RAW, 'Quote text.'),
@@ -125,19 +163,34 @@ class save_note extends \core_external\external_api {
             'url' => new \core_external\external_value(PARAM_RAW, 'Source page URL.'),
             'pagetitle' => new \core_external\external_value(PARAM_TEXT, 'Source page title.'),
             'isglobal' => new \core_external\external_value(PARAM_BOOL, 'Whether the note is global.'),
+            'tagsenabled' => new \core_external\external_value(PARAM_BOOL, 'Whether the tag area is enabled.'),
+            'tags' => new \core_external\external_multiple_structure(tag_manager::external_structure()),
             'screenshots' => new \core_external\external_multiple_structure(screenshot_manager::external_structure()),
             'timecreated' => new \core_external\external_value(PARAM_INT, 'Creation timestamp.'),
             'timemodified' => new \core_external\external_value(PARAM_INT, 'Last modification timestamp.'),
         ]);
     }
 
-    public static function export_note(\stdClass $note): array {
+    public static function export_note(\stdClass $note, ?array $tags = null): array {
         $quote = (string) ($note->quote ?? '');
+        $content = (string) ($note->content ?? '');
+        $contentformat = isset($note->contentformat) ? (int) $note->contentformat : FORMAT_PLAIN;
+        if (!in_array($contentformat, [(int) FORMAT_PLAIN, (int) FORMAT_MARKDOWN], true)) {
+            $contentformat = (int) FORMAT_PLAIN;
+        }
+        if ($tags === null) {
+            $tags = tag_manager::get_for_note((int) $note->id, (int) $note->userid);
+        }
         return [
             'id' => (int) $note->id,
             'userid' => (int) $note->userid,
             'courseid' => (int) $note->courseid,
-            'content' => (string) ($note->content ?? ''),
+            'content' => $content,
+            'contentformat' => $contentformat,
+            'contenthtml' => format_text($content, $contentformat, [
+                'context' => context_system::instance(),
+                'filter' => false,
+            ]),
             'quote' => $quote,
             'hasquote' => trim($quote) !== '',
             'quotetext' => $quote,
@@ -145,6 +198,8 @@ class save_note extends \core_external\external_api {
             'url' => (string) ($note->url ?? ''),
             'pagetitle' => (string) ($note->pagetitle ?? ''),
             'isglobal' => !empty($note->isglobal),
+            'tagsenabled' => tag_manager::is_enabled(),
+            'tags' => array_values($tags),
             'screenshots' => screenshot_manager::get_for_note((int) $note->id),
             'timecreated' => (int) $note->timecreated,
             'timemodified' => (int) $note->timemodified,

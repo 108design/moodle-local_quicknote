@@ -1,5 +1,9 @@
 # Moodle plugin: local_quicknote
 
+## 0.11.0-108design.5 (2026-08-28)
+- Changed Notes Center live search to replace results asynchronously so the search field retains focus while typing and when clearing.
+- Increased and explicitly applied the card-header tint so it remains visibly distinct from the lighter footer across themes.
+
 ## 0.11.0-108design.4 (2026-08-28)
 - Added debounced live search in the Notes Center. Typing updates the result set after a short pause, and clearing the field or using its clear icon restores all notes immediately.
 - Changed note tag badges to the theme's primary accent with Bootstrap's matching contrast treatment.

@@ -59,13 +59,71 @@ define([], function() {
             if (searchInput && clearSearchBtn) {
                 var searchTimer = null;
                 var submittedSearch = searchInput.value.trim();
-                var submitSearch = function() {
+                var activeRequest = null;
+                var searchForm = searchInput.form;
+                var center = document.querySelector('.local-quicknote-center');
+                var replaceRegion = function(nextDocument, selector) {
+                    var currentRegion = document.querySelector(selector);
+                    var nextRegion = nextDocument.querySelector(selector);
+                    if (currentRegion && nextRegion) {
+                        currentRegion.innerHTML = nextRegion.innerHTML;
+                        if (nextRegion.hasAttribute('hidden')) {
+                            currentRegion.setAttribute('hidden', 'hidden');
+                        } else {
+                            currentRegion.removeAttribute('hidden');
+                        }
+                    }
+                };
+                var submitSearch = function(force) {
                     var nextSearch = searchInput.value.trim();
-                    if (nextSearch === submittedSearch || !searchInput.form) {
+                    if ((!force && nextSearch === submittedSearch) || !searchForm || !center) {
                         return;
                     }
                     submittedSearch = nextSearch;
-                    searchInput.form.submit();
+                    if (activeRequest) {
+                        activeRequest.abort();
+                    }
+                    var request = new AbortController();
+                    activeRequest = request;
+
+                    var url = new URL(searchForm.action, window.location.href);
+                    new FormData(searchForm).forEach(function(value, name) {
+                        if (name === 'searchterm') {
+                            value = nextSearch;
+                        }
+                        if (String(value).length > 0 && String(value) !== '0') {
+                            url.searchParams.set(name, value);
+                        } else {
+                            url.searchParams.delete(name);
+                        }
+                    });
+                    center.setAttribute('aria-busy', 'true');
+
+                    fetch(url.toString(), {
+                        credentials: 'same-origin',
+                        headers: {'X-Requested-With': 'XMLHttpRequest'},
+                        signal: request.signal
+                    }).then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('QuickNote search request failed.');
+                        }
+                        return response.text();
+                    }).then(function(html) {
+                        var nextDocument = new DOMParser().parseFromString(html, 'text/html');
+                        replaceRegion(nextDocument, '[data-region="quicknote-results"]');
+                        replaceRegion(nextDocument, '[data-region="quicknote-pagination"]');
+                        replaceRegion(nextDocument, '[data-region="quicknote-exports"]');
+                        window.history.replaceState({}, '', url.toString());
+                    }).catch(function(error) {
+                        if (error.name !== 'AbortError') {
+                            window.location.assign(url.toString());
+                        }
+                    }).finally(function() {
+                        if (activeRequest === request) {
+                            center.removeAttribute('aria-busy');
+                            activeRequest = null;
+                        }
+                    });
                 };
 
                 searchInput.addEventListener('input', function() {
@@ -76,23 +134,31 @@ define([], function() {
                     }
 
                     window.clearTimeout(searchTimer);
-                    searchTimer = window.setTimeout(submitSearch, 400);
+                    searchTimer = window.setTimeout(function() {
+                        submitSearch(false);
+                    }, 400);
                 });
 
                 clearSearchBtn.addEventListener('click', function() {
                     window.clearTimeout(searchTimer);
                     searchInput.value = '';
                     clearSearchBtn.setAttribute('hidden', 'hidden');
-                    submitSearch();
+                    submitSearch(true);
+                    searchInput.focus();
+                });
+
+                searchForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    window.clearTimeout(searchTimer);
+                    submitSearch(true);
                 });
             }
 
-            document.querySelectorAll('.local-quicknote-center__delete-form').forEach(function(form) {
-                form.addEventListener('submit', function(e) {
-                    if (!window.confirm(form.getAttribute('data-delete-confirm'))) {
-                        e.preventDefault();
-                    }
-                });
+            document.addEventListener('submit', function(e) {
+                var form = e.target.closest('.local-quicknote-center__delete-form');
+                if (form && !window.confirm(form.getAttribute('data-delete-confirm'))) {
+                    e.preventDefault();
+                }
             });
         }
     };

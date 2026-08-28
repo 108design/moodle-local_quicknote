@@ -503,8 +503,8 @@
 }
 
 .local-quicknote-center__card-header {
-    background-color: rgba(0, 0, 0, 0.055);
-    background-color: rgba(var(--bs-body-color-rgb, 33, 37, 41), 0.055);
+    background-color: rgba(0, 0, 0, 0.075) !important;
+    background-color: rgba(var(--bs-body-color-rgb, 33, 37, 41), 0.075) !important;
 }
 
 .local-quicknote-center__tag {

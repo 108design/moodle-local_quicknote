@@ -100,19 +100,19 @@
             </div>
         </form>
 
-        {{#hasnotes}}
-        <div class="local-quicknote-center__exports">
+        <div class="local-quicknote-center__exports" data-region="quicknote-exports" {{^hasnotes}}hidden{{/hasnotes}}>
+            {{#hasnotes}}
             <a href="{{mdurl}}" class="local-quicknote-center__export" title="{{exportmd}}" aria-label="{{exportmd}}">
                 <i class="fa fa-file-text-o" aria-hidden="true"></i>
             </a>
             <a href="{{pdfurl}}" class="local-quicknote-center__export" title="{{exportpdf}}" aria-label="{{exportpdf}}">
                 <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
             </a>
+            {{/hasnotes}}
         </div>
-        {{/hasnotes}}
     </div>
 
-    <div class="row">
+    <div class="row" data-region="quicknote-results">
         {{#notes}}
         <div class="col-12 col-md-6 col-xl-4 mb-4">
             <div class="card h-100 shadow-sm" data-noteid="{{id}}">
@@ -180,11 +180,13 @@
         {{/notes}}
     </div>
 
-    {{#pagingbar}}
-    <div class="mt-4 mb-4 d-flex justify-content-center">
-        {{{pagingbar}}}
+    <div data-region="quicknote-pagination">
+        {{#pagingbar}}
+        <div class="mt-4 mb-4 d-flex justify-content-center">
+            {{{pagingbar}}}
+        </div>
+        {{/pagingbar}}
     </div>
-    {{/pagingbar}}
 </div>
 
 {{#js}}
